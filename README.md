@@ -126,6 +126,53 @@ db.timezone=Asia/Manila
 
 ---
 
+## Part 4B — About the Railway Database
+
+Our MySQL database is hosted on Railway. You do **not** need to create a Railway account unless you are the database admin (team leader). Everyone else just uses the credentials shared by the team leader.
+
+This section is here so you understand what Railway is and how to view the database if needed.
+
+### What is Railway?
+Railway is a cloud hosting platform. It runs our MySQL database 24/7 so the whole team connects to the same live database from their own computers. Think of it as the database living on the internet instead of on someone's laptop.
+
+### Viewing the database (optional but useful for debugging)
+
+If you want to browse the tables and data visually, you can use **MySQL Workbench** — a free GUI tool for MySQL.
+
+**Download MySQL Workbench:**
+- https://dev.mysql.com/downloads/workbench/
+- Choose your operating system and install it
+
+**Get the connection details from the team leader.**
+You will need:
+- Host (the Railway public hostname)
+- Port (usually `3306` or a custom Railway port)
+- Username (`root`)
+- Password (same password as in your `config.properties`)
+- Database name (`railway`)
+
+**Connect in MySQL Workbench:**
+1. Open MySQL Workbench
+2. Click the **+** icon next to "MySQL Connections"
+3. Fill in the fields:
+   - Connection Name: `Railway POS`
+   - Hostname: paste the host from the team leader
+   - Port: paste the port number
+   - Username: `root`
+4. Click **Store in Vault** next to Password and enter the password
+5. Click **Test Connection** — you should see "Successfully made the MySQL connection"
+6. Click **OK**, then double-click the connection to open it
+7. In the left panel, expand **railway** to see all 6 tables
+
+> **Note:** Railway's internal host (`mysql.railway.internal`) only works from inside Railway's own network. For MySQL Workbench on your computer, the team leader must enable the **Public Networking** option in Railway and share the **public host and port** with you. These are different from the internal credentials.
+
+### Important rules about the shared database
+- Everyone on the team reads and writes to the **same database** — changes one person makes are immediately visible to everyone else
+- Do not delete or modify existing table data unless your task specifically requires it
+- If you accidentally break something (wrong data, deleted rows), tell the team leader immediately so it can be fixed
+
+---
+
 ## Part 5 — Verify Your Setup
 
 Once everything above is done, run the connection test:
@@ -264,6 +311,7 @@ src/
 | Red error marks in NetBeans | Add the JDBC JAR (step 3.4) |
 | `config.properties not found` | Create `src/config/config.properties` (Part 4) |
 | `Communications link failure` | Check your Railway host and port in config.properties |
+| Can't connect in MySQL Workbench | Ask the team leader for the public host and port — the internal Railway host does not work outside Railway |
 | `fatal: unable to auto-detect email` | Run the `git config` commands in step 1.5 |
 | LF/CRLF warnings on Windows | Safe to ignore — this is normal on Windows |
 | Pull request has merge conflicts | Ask the team leader for help before merging |
