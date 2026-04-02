@@ -189,6 +189,25 @@ We use **feature branches** so everyone's work stays separate until it is review
 5. Click **Create pull request**
 6. The team leader will review and merge it into `main`
 
+### 6.4 Syncing Your Computer After a Merge
+
+Whenever the team leader merges someone's pull request into `main`, everyone else needs to update their local copy. If you skip this step, your code will fall behind and you may run into conflicts later.
+
+Run these two commands in your terminal whenever you want to sync:
+```
+git checkout main
+git pull origin main
+```
+
+`git checkout main` switches you back to the main branch. `git pull origin main` downloads all the latest merged changes from GitHub onto your computer.
+
+**When to do this:**
+- At the start of every new work session, before creating a new branch
+- After the team leader announces a pull request has been merged
+- Any time you are unsure if your local copy is up to date
+
+After pulling, create your next feature branch as usual (step 6.1) — it will now be based on the latest code.
+
 ---
 
 ## Project Structure
@@ -248,6 +267,7 @@ src/
 | `fatal: unable to auto-detect email` | Run the `git config` commands in step 1.5 |
 | LF/CRLF warnings on Windows | Safe to ignore — this is normal on Windows |
 | Pull request has merge conflicts | Ask the team leader for help before merging |
+| My code is missing changes my teammate pushed | Run `git checkout main` then `git pull origin main` (step 6.4) |
 
 ---
 
