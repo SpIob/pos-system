@@ -18,12 +18,15 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingConstants;
+import ui.DashboardPanel;
+import ui.StationsPanel;
+import ui.SalesPanel;
+import ui.ProductsPanel;
+import ui.ReportsPanel;
 
 public class MainFrame extends JFrame {
 
-    // ---------------------------------------------------------------
     // Colors
-    // ---------------------------------------------------------------
     private static final Color NAVY_DARK    = new Color(0x1C3557);
     private static final Color NAVY_MID     = new Color(0x2D5F8A);
     private static final Color TAB_BG       = new Color(0xF5F5F5);
@@ -32,9 +35,7 @@ public class MainFrame extends JFrame {
     private static final Color LOGOUT_HOVER = new Color(0x1C3557);
     private static final Color BADGE_BG     = new Color(0x2D5F8A);
 
-    // ---------------------------------------------------------------
     // Components
-    // ---------------------------------------------------------------
     private JPanel       topBar;
     private JLabel       appTitleLabel;
     private JLabel       loggedUserLabel;
@@ -42,20 +43,18 @@ public class MainFrame extends JFrame {
     private JButton      logoutButton;
     private JTabbedPane  mainTabbedPane;
 
-    // Tab panels — plain placeholders for now
-    private JPanel dashboardPanel;
-    private JPanel stationsPanel;
-    private JPanel salesPanel;
-    private JPanel productsPanel;
-    private JPanel reportsPanel;
+    // Tab panels
+    private DashboardPanel dashboardPanel;
+    private StationsPanel stationsPanel;
+    private SalesPanel salesPanel;
+    private ProductsPanel productsPanel;
+    private ReportsPanel reportsPanel;
 
     // The logged-in user info (set via constructor)
     private String username;
     private String role;
 
-    // ---------------------------------------------------------------
     // Constructor
-    // ---------------------------------------------------------------
     public MainFrame(String username, String role) {
         this.username = username;
         this.role     = role;
@@ -70,24 +69,20 @@ public class MainFrame extends JFrame {
         buildUI();
     }
 
-    // ---------------------------------------------------------------
-    // Build full UI
-    // ---------------------------------------------------------------
+    // Build Full UI
     private void buildUI() {
         setLayout(new BorderLayout());
 
         buildTopBar();
         buildTabbedPane();
 
-        // Apply role-based access — cashiers cannot see Reports
+        // Apply role-based access (cashiers cannot see Reports)
         if (!role.equalsIgnoreCase("admin")) {
             mainTabbedPane.setEnabledAt(4, false);
         }
     }
 
-    // ---------------------------------------------------------------
-    // Top navigation bar
-    // ---------------------------------------------------------------
+    // Top navbar
     private void buildTopBar() {
         topBar = new JPanel(new BorderLayout()) {
             @Override
@@ -215,9 +210,7 @@ public class MainFrame extends JFrame {
         add(topBar, BorderLayout.NORTH);
     }
 
-    // ---------------------------------------------------------------
-    // Tab bar + tabbed pane
-    // ---------------------------------------------------------------
+    // Tab bar & tabbed pane
     private void buildTabbedPane() {
 
         // Thin separator line between topBar and tabs
@@ -244,15 +237,14 @@ public class MainFrame extends JFrame {
         mainTabbedPane.putClientProperty("JTabbedPane.tabAreaBackground",
                                           Color.WHITE);
 
-        // Build placeholder panels for each tab
-        // (you will replace each one with the real panel class later)
-        dashboardPanel = buildPlaceholder("Dashboard");
-        stationsPanel  = buildPlaceholder("Stations");
-        salesPanel     = buildPlaceholder("Sales");
-        productsPanel  = buildPlaceholder("Products");
-        reportsPanel   = buildPlaceholder("Reports");
+        // Panels for each tab
+        dashboardPanel = new DashboardPanel();
+        stationsPanel  = new StationsPanel();
+        salesPanel     = new SalesPanel();
+        productsPanel  = new ProductsPanel();
+        reportsPanel   = new ReportsPanel();
 
-        // Add tabs — index order matters for role-based access above
+        // Add tabs (index order matters for role-based access above)
         mainTabbedPane.addTab("Dashboard", dashboardPanel);  // index 0
         mainTabbedPane.addTab("Stations",  stationsPanel);   // index 1
         mainTabbedPane.addTab("Sales",     salesPanel);      // index 2
@@ -271,24 +263,8 @@ public class MainFrame extends JFrame {
         add(contentWrapper, BorderLayout.CENTER);
     }
 
-    // ---------------------------------------------------------------
-    // Placeholder panel — shows tab name, replaced later
-    // ---------------------------------------------------------------
-    private JPanel buildPlaceholder(String name) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(0xF5F5F5));
 
-        JLabel label = new JLabel(name + " — coming soon", SwingConstants.CENTER);
-        label.setFont(new Font("Arial", Font.PLAIN, 16));
-        label.setForeground(new Color(0xAAAAAA));
-        panel.add(label, BorderLayout.CENTER);
-
-        return panel;
-    }
-
-    // ---------------------------------------------------------------
-    // Logout handler
-    // ---------------------------------------------------------------
+    // Logout Handler
     private void handleLogout() {
         int choice = javax.swing.JOptionPane.showConfirmDialog(
             this,
@@ -303,17 +279,13 @@ public class MainFrame extends JFrame {
         }
     }
 
-    // ---------------------------------------------------------------
     // Utility
-    // ---------------------------------------------------------------
     private String capitalize(String text) {
         if (text == null || text.isEmpty()) return text;
         return text.substring(0, 1).toUpperCase() + text.substring(1).toLowerCase();
     }
 
-    // ---------------------------------------------------------------
-    // Getters — used when swapping placeholder panels for real ones
-    // ---------------------------------------------------------------
+    // Swap placeholder panels for real ones
     public JTabbedPane getMainTabbedPane() {
         return mainTabbedPane;
     }
@@ -324,9 +296,7 @@ public class MainFrame extends JFrame {
         mainTabbedPane.setTitleAt(index, title);
     }
 
-    // ---------------------------------------------------------------
-    // Main — for testing directly (Shift + F6)
-    // ---------------------------------------------------------------
+    // Main test code
     public static void main(String[] args) {
         java.awt.EventQueue.invokeLater(() -> {
             new MainFrame("admin", "admin").setVisible(true);

@@ -26,9 +26,7 @@ import javax.swing.SwingConstants;
 
 public class LoginFrame extends JFrame {
 
-    // ---------------------------------------------------------------
     // Colors
-    // ---------------------------------------------------------------
     private static final Color BG_DARK    = new Color(0x1A2C4E);
     private static final Color BG_DARKER  = new Color(0x152340);
     private static final Color NAVY       = new Color(0x1C3557);
@@ -38,9 +36,7 @@ public class LoginFrame extends JFrame {
     private static final Color FIELD_BORDER = new Color(0xCCCCCC);
     private static final Color PLACEHOLDER = new Color(0xAAAAAA);
 
-    // ---------------------------------------------------------------
     // Components
-    // ---------------------------------------------------------------
     private JLabel     logoLabel;
     private JLabel     titleLabel;
     private JLabel     subtitleLabel;
@@ -52,9 +48,7 @@ public class LoginFrame extends JFrame {
     private JButton    loginButton;
     private JLabel     errorLabel;
 
-    // ---------------------------------------------------------------
     // Constructor
-    // ---------------------------------------------------------------
     public LoginFrame() {
         setTitle("ByteZone Café POS");
         setSize(1280, 720);
@@ -66,9 +60,7 @@ public class LoginFrame extends JFrame {
         buildUI();
     }
 
-    // ---------------------------------------------------------------
-    // Build the full UI manually (no initComponents)
-    // ---------------------------------------------------------------
+    // Manually build the full UI
     private void buildUI() {
 
         // --- Background panel (dark navy gradient) ---
@@ -105,9 +97,7 @@ public class LoginFrame extends JFrame {
         cardPanel.setPreferredSize(new Dimension(360, 460));
         cardPanel.setLayout(new GridBagLayout());
 
-        // -------------------------------------------------------
-        // Build each component and add to cardPanel
-        // -------------------------------------------------------
+        // Build n add each component to cardPanel
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0;
@@ -257,16 +247,12 @@ public class LoginFrame extends JFrame {
         gbc.insets = new Insets(0, 40, 24, 40);
         cardPanel.add(errorLabel, gbc);
 
-        // -------------------------------------------------------
-        // Add card to background, background to frame
-        // -------------------------------------------------------
+        // Add card to background and background to frame
         backgroundPanel.add(cardPanel, new GridBagConstraints());
         setContentPane(backgroundPanel);
     }
 
-    // ---------------------------------------------------------------
-    // Placeholder text helper for JTextField
-    // ---------------------------------------------------------------
+    // Placeholder text
     private void addPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
         field.setForeground(PLACEHOLDER);
@@ -289,9 +275,7 @@ public class LoginFrame extends JFrame {
         });
     }
 
-    // ---------------------------------------------------------------
-    // Getters — used by login logic later
-    // ---------------------------------------------------------------
+    // Temporary for login logic later
     public String getUsername() {
         String text = usernameField.getText();
         return text.equals("Enter username") ? "" : text;
@@ -314,9 +298,7 @@ public class LoginFrame extends JFrame {
         return loginButton;
     }
 
-    // ---------------------------------------------------------------
-    // Main — for testing this screen directly (Shift + F6)
-    // ---------------------------------------------------------------
+    // Main test code
     public static void main(String[] args) {
         java.awt.EventQueue.invokeLater(() -> {
             new LoginFrame().setVisible(true);

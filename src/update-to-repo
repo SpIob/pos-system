@@ -1,0 +1,11 @@
+cd Folder Location
+git status
+git checkout -b feature/"Branch Name"
+git add .
+git commit -m "Message"
+git push origin feature/"Branch Name"
+"Compare & Pull Request"
+"Create Pull Request"
+"Merge pull request" -> "Confirm merge"
+git checkout main
+git pull origin main
