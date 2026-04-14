@@ -21,9 +21,7 @@ import javax.swing.table.JTableHeader;
 
 public class DashboardPanel extends JPanel {
 
-    // ---------------------------------------------------------------
     // Colors
-    // ---------------------------------------------------------------
     private static final Color NAVY_DARK    = new Color(0x1C3557);
     private static final Color PAGE_BG      = new Color(0xF5F5F5);
     private static final Color CARD_BG      = Color.WHITE;
@@ -38,28 +36,20 @@ public class DashboardPanel extends JPanel {
     private static final Color STATUS_RED   = new Color(0xC62828);
     private static final Color STATUS_GRAY  = new Color(0x888888);
 
-    // ---------------------------------------------------------------
-    // KPI value labels (updated later by refreshData)
-    // ---------------------------------------------------------------
+    // KPI lavel values
     private JLabel todaysSalesValue;
     private JLabel activeStationsValue;
     private JLabel lowStockValue;
     private JLabel activeSessionsValue;
 
-    // ---------------------------------------------------------------
     // Tables
-    // ---------------------------------------------------------------
     private JTable           recentTxnTable;
     private DefaultTableModel recentTxnModel;
 
-    // ---------------------------------------------------------------
     // Station overview panel
-    // ---------------------------------------------------------------
     private JPanel stationListPanel;
 
-    // ---------------------------------------------------------------
     // Constructor
-    // ---------------------------------------------------------------
     public DashboardPanel() {
         setLayout(new BorderLayout());
         setBackground(PAGE_BG);
@@ -68,9 +58,7 @@ public class DashboardPanel extends JPanel {
         loadSampleData();
     }
 
-    // ---------------------------------------------------------------
     // Build full UI
-    // ---------------------------------------------------------------
     private void buildUI() {
         // Top: 4 KPI stat cards
         add(buildStatsRow(), BorderLayout.NORTH);
@@ -79,9 +67,7 @@ public class DashboardPanel extends JPanel {
         add(buildCenterSection(), BorderLayout.CENTER);
     }
 
-    // ---------------------------------------------------------------
     // KPI stat cards row
-    // ---------------------------------------------------------------
     private JPanel buildStatsRow() {
         JPanel row = new JPanel(new GridLayout(1, 4, 16, 0));
         row.setOpaque(false);
@@ -160,18 +146,14 @@ public class DashboardPanel extends JPanel {
         return card;
     }
 
-    // ---------------------------------------------------------------
-    // Helper: retrieves the value JLabel from a stat card
-    // ---------------------------------------------------------------
+    // Retrieve value JLabel from stat card
     private JLabel getValueLabel(JPanel card) {
         // The value label is inside the textStack inside the card
         JPanel textStack = (JPanel) card.getComponent(0);
         return (JLabel) textStack.getComponent(0);
     }
 
-    // ---------------------------------------------------------------
-    // Center section: transactions table + station overview
-    // ---------------------------------------------------------------
+    // Transactions table + overview
     private JPanel buildCenterSection() {
         JPanel center = new JPanel(new BorderLayout(16, 0));
         center.setOpaque(false);
@@ -182,9 +164,7 @@ public class DashboardPanel extends JPanel {
         return center;
     }
 
-    // ---------------------------------------------------------------
-    // Recent Transactions panel (left/center)
-    // ---------------------------------------------------------------
+    // Recent transactions
     private JPanel buildTransactionsPanel() {
         JPanel panel = new JPanel(new BorderLayout()) {
             @Override
@@ -245,9 +225,7 @@ public class DashboardPanel extends JPanel {
         return panel;
     }
 
-    // ---------------------------------------------------------------
-    // Station Overview panel (right)
-    // ---------------------------------------------------------------
+    // Station Overview panel
     private JPanel buildStationOverviewPanel() {
         JPanel panel = new JPanel(new BorderLayout()) {
             @Override
@@ -341,9 +319,7 @@ public class DashboardPanel extends JPanel {
         return row;
     }
 
-    // ---------------------------------------------------------------
-    // Apply consistent styling to every JTable in this panel
-    // ---------------------------------------------------------------
+    // Style each table
     private void styleTable(JTable table) {
         // Header
         JTableHeader header = table.getTableHeader();
@@ -385,9 +361,7 @@ public class DashboardPanel extends JPanel {
         });
     }
 
-    // ---------------------------------------------------------------
-    // Load sample data — replace with real DAO calls later
-    // ---------------------------------------------------------------
+    // Load sample data (will replace with real data later)
     private void loadSampleData() {
         // KPI cards
         todaysSalesValue.setText("₱2,340.00");
@@ -435,9 +409,7 @@ public class DashboardPanel extends JPanel {
         // }
     }
 
-    // ---------------------------------------------------------------
-    // Main — for testing directly (Shift + F6)
-    // ---------------------------------------------------------------
+    // Main test code
     public static void main(String[] args) {
         java.awt.EventQueue.invokeLater(() -> {
             javax.swing.JFrame f = new javax.swing.JFrame("Dashboard Test");
