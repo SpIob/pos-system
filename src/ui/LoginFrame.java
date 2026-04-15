@@ -23,6 +23,8 @@ import javax.swing.JPasswordField;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import dao.UserDAO;
+import model.User;
 
 public class LoginFrame extends JFrame {
 
@@ -250,6 +252,48 @@ public class LoginFrame extends JFrame {
         // Add card to background and background to frame
         backgroundPanel.add(cardPanel, new GridBagConstraints());
         setContentPane(backgroundPanel);
+        
+        // Wire login button to UserDAO
+        loginButton.addActionListener(e -> handleLogin());
+        // Also allow pressing Enter in the password field
+        passwordField.addActionListener(e -> handleLogin());
+    }
+    
+    // Login handler — replaces sample logic with real UserDAO call
+    private void handleLogin() {
+        String username = getUsername();
+        String password = getPassword();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            showError("Please enter your username and password.");
+            return;
+        }
+
+        // Disable button while authenticating
+        loginButton.setEnabled(false);
+        loginButton.setText("Logging in...");
+
+        // Run on a background thread so the UI doesn't freeze
+        new Thread(() -> {
+            dao.UserDAO userDAO = new dao.UserDAO();
+            model.User user = userDAO.authenticate(username, password);
+
+            // Update UI back on the Event Dispatch Thread
+            java.awt.EventQueue.invokeLater(() -> {
+                loginButton.setEnabled(true);
+                loginButton.setText("Log In");
+
+                if (user != null) {
+                    hideError();
+                    dispose();
+                    new MainFrame(user).setVisible(true);
+                } else {
+                    showError("Invalid username or password.");
+                    passwordField.setText("");
+                    passwordField.requestFocus();
+                }
+            });
+        }).start();
     }
 
     // Placeholder text

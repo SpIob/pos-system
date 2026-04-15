@@ -232,6 +232,85 @@ public class TransactionDAO {
 
         return items;
     }
+    
+    // ---------------------------------------------------------------
+    // Get the number of line items for a transaction
+    // Used to populate the "Items" column in transaction tables
+    // ---------------------------------------------------------------
+    public int getItemCount(int transactionId) {
+        String sql = "SELECT COUNT(*) FROM transaction_items "
+                   + "WHERE transaction_id = ?";
+
+        Connection conn = DBConnection.getConnection();
+        if (conn == null) return 0;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, transactionId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (SQLException e) {
+            System.err.println("[TransactionDAO] getItemCount() failed.");
+            e.printStackTrace();
+        } finally {
+            DBConnection.closeConnection(conn);
+        }
+
+        return 0;
+    }
+    
+    // ---------------------------------------------------------------
+    // Rich transaction row — includes item count and cashier username
+    // in a single SQL query. Used by both Dashboard and Reports.
+    // ---------------------------------------------------------------
+    public java.util.List<Object[]> getRecentTransactionsRich(int limit) {
+        java.util.List<Object[]> rows = new java.util.ArrayList<>();
+
+        String sql =
+            "SELECT t.transaction_id, "
+            + "       t.transaction_date, "
+            + "       COUNT(ti.item_id)  AS item_count, "
+            + "       t.total_amount, "
+            + "       u.username "
+            + "FROM transactions t "
+            + "LEFT JOIN transaction_items ti "
+            + "       ON ti.transaction_id = t.transaction_id "
+            + "LEFT JOIN users u "
+            + "       ON u.user_id = t.user_id "
+            + "GROUP BY t.transaction_id, "
+            + "         t.transaction_date, "
+            + "         t.total_amount, "
+            + "         u.username "
+            + "ORDER BY t.transaction_date DESC "
+            + "LIMIT ?";
+
+        Connection conn = DBConnection.getConnection();
+        if (conn == null) return rows;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int    txnId     = rs.getInt("transaction_id");
+                java.sql.Timestamp date = rs.getTimestamp("transaction_date");
+                int    itemCount = rs.getInt("item_count");
+                double total     = rs.getDouble("total_amount");
+                String username  = rs.getString("username");
+
+                rows.add(new Object[]{txnId, date, itemCount,
+                                      total, username});
+            }
+        } catch (SQLException e) {
+            System.err.println(
+                    "[TransactionDAO] getRecentTransactionsRich() failed.");
+            e.printStackTrace();
+        } finally {
+            DBConnection.closeConnection(conn);
+        }
+
+        return rows;
+    }
 
     // Map a ResultSet row to a Transaction object
     private Transaction mapRow(ResultSet rs) throws SQLException {

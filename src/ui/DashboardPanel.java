@@ -1,5 +1,13 @@
 package ui;
 
+import dao.ProductDAO;
+import dao.SessionDAO;
+import dao.StationDAO;
+import dao.TransactionDAO;
+import model.Product;
+import model.Station;
+import model.Transaction;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -9,12 +17,15 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
+import java.text.SimpleDateFormat;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -36,18 +47,28 @@ public class DashboardPanel extends JPanel {
     private static final Color STATUS_RED   = new Color(0xC62828);
     private static final Color STATUS_GRAY  = new Color(0x888888);
 
-    // KPI lavel values
+    // DAOs
+    private final TransactionDAO transactionDAO = new TransactionDAO();
+    private final StationDAO     stationDAO     = new StationDAO();
+    private final SessionDAO     sessionDAO     = new SessionDAO();
+    private final ProductDAO     productDAO     = new ProductDAO();
+
+    // KPI labels
     private JLabel todaysSalesValue;
     private JLabel activeStationsValue;
     private JLabel lowStockValue;
     private JLabel activeSessionsValue;
 
     // Tables
-    private JTable           recentTxnTable;
+    private JTable            recentTxnTable;
     private DefaultTableModel recentTxnModel;
 
-    // Station overview panel
+    // Station overview
     private JPanel stationListPanel;
+
+    // Date formatter for the transactions table
+    private static final SimpleDateFormat DATE_FMT =
+            new SimpleDateFormat("MMM d hh:mm a");
 
     // Constructor
     public DashboardPanel() {
@@ -55,15 +76,11 @@ public class DashboardPanel extends JPanel {
         setBackground(PAGE_BG);
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         buildUI();
-        loadSampleData();
     }
 
-    // Build full UI
+    // Build UI structure (no data yet)
     private void buildUI() {
-        // Top: 4 KPI stat cards
-        add(buildStatsRow(), BorderLayout.NORTH);
-
-        // Center: transactions (left) + station overview (right)
+        add(buildStatsRow(),     BorderLayout.NORTH);
         add(buildCenterSection(), BorderLayout.CENTER);
     }
 
@@ -73,39 +90,29 @@ public class DashboardPanel extends JPanel {
         row.setOpaque(false);
         row.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
 
-        // Card 1 — Today's Sales (green accent)
-        JPanel salesCard = buildStatCard("₱0.00", "Today's Sales",
-                                          GREEN_VAL,  new Color(0x2E7D32));
+        JPanel salesCard = buildStatCard("Loading...", "Today's Sales",
+                GREEN_VAL, new Color(0x2E7D32));
         todaysSalesValue = getValueLabel(salesCard);
 
-        // Card 2 — Active Stations (blue accent)
-        JPanel stationsCard = buildStatCard("0 / 7", "Active Stations",
-                                             BLUE_VAL, new Color(0x1C3557));
+        JPanel stationsCard = buildStatCard("...", "Active Stations",
+                BLUE_VAL, new Color(0x1C3557));
         activeStationsValue = getValueLabel(stationsCard);
 
-        // Card 3 — Low Stock Items (orange accent)
-        JPanel lowStockCard = buildStatCard("0 ⚠", "Low Stock Items",
-                                             ORANGE_VAL, new Color(0xFF8F00));
+        JPanel lowStockCard = buildStatCard("...", "Low Stock Items",
+                ORANGE_VAL, new Color(0xFF8F00));
         lowStockValue = getValueLabel(lowStockCard);
 
-        // Card 4 — Active Sessions (dark blue accent)
-        JPanel sessionsCard = buildStatCard("0", "Active Sessions",
-                                             BLUE_VAL, new Color(0x1C3557));
+        JPanel sessionsCard = buildStatCard("...", "Active Sessions",
+                BLUE_VAL, new Color(0x1C3557));
         activeSessionsValue = getValueLabel(sessionsCard);
 
         row.add(salesCard);
         row.add(stationsCard);
         row.add(lowStockCard);
         row.add(sessionsCard);
-
         return row;
     }
 
-    // ---------------------------------------------------------------
-    // Builds one KPI card
-    // accentColor = left border color
-    // valueColor  = color of the large number
-    // ---------------------------------------------------------------
     private JPanel buildStatCard(String value, String labelText,
                                   Color valueColor, Color accentColor) {
         JPanel card = new JPanel(new BorderLayout()) {
@@ -114,25 +121,21 @@ public class DashboardPanel extends JPanel {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                        RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(CARD_BG);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
             }
         };
         card.setOpaque(false);
-        // Left colored accent border
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 4, 0, 0, accentColor),
             BorderFactory.createEmptyBorder(16, 16, 16, 16)
         ));
 
-        // Value label (large)
         JLabel valLabel = new JLabel(value);
         valLabel.setFont(new Font("Arial", Font.BOLD, 26));
         valLabel.setForeground(valueColor);
-        valLabel.putClientProperty("isValueLabel", Boolean.TRUE);
 
-        // Description label (small, gray)
         JLabel descLabel = new JLabel(labelText);
         descLabel.setFont(new Font("Arial", Font.PLAIN, 12));
         descLabel.setForeground(GRAY_LABEL);
@@ -146,25 +149,20 @@ public class DashboardPanel extends JPanel {
         return card;
     }
 
-    // Retrieve value JLabel from stat card
     private JLabel getValueLabel(JPanel card) {
-        // The value label is inside the textStack inside the card
         JPanel textStack = (JPanel) card.getComponent(0);
         return (JLabel) textStack.getComponent(0);
     }
 
-    // Transactions table + overview
+    // Center section
     private JPanel buildCenterSection() {
         JPanel center = new JPanel(new BorderLayout(16, 0));
         center.setOpaque(false);
-
         center.add(buildTransactionsPanel(), BorderLayout.CENTER);
         center.add(buildStationOverviewPanel(), BorderLayout.EAST);
-
         return center;
     }
 
-    // Recent transactions
     private JPanel buildTransactionsPanel() {
         JPanel panel = new JPanel(new BorderLayout()) {
             @Override
@@ -172,7 +170,7 @@ public class DashboardPanel extends JPanel {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                        RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(CARD_BG);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
             }
@@ -180,52 +178,45 @@ public class DashboardPanel extends JPanel {
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Section title
         JLabel title = new JLabel("Recent Transactions");
         title.setFont(new Font("Arial", Font.BOLD, 14));
         title.setForeground(new Color(0x222222));
         title.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
         panel.add(title, BorderLayout.NORTH);
 
-        // Table model — not editable
         String[] columns = {"TXN #", "Date & Time", "Items", "Total", "Cashier"};
         recentTxnModel = new DefaultTableModel(columns, 0) {
             @Override
-            public boolean isCellEditable(int row, int col) {
-                return false;
-            }
+            public boolean isCellEditable(int row, int col) { return false; }
         };
 
         recentTxnTable = new JTable(recentTxnModel);
         styleTable(recentTxnTable);
 
-        // TXN # column: blue text
+        // TXN # column blue
         recentTxnTable.getColumnModel().getColumn(0)
-            .setCellRenderer(new DefaultTableCellRenderer() {
-                @Override
-                public java.awt.Component getTableCellRendererComponent(
-                        JTable table, Object value, boolean isSelected,
-                        boolean hasFocus, int row, int col) {
-                    super.getTableCellRendererComponent(
-                            table, value, isSelected, hasFocus, row, col);
-                    setForeground(isSelected ? Color.WHITE : TXN_BLUE);
-                    setBackground(isSelected ? NAVY_DARK :
-                                  (row % 2 == 0 ? ROW_NORMAL : ROW_ALT));
-                    setFont(new Font("Arial", Font.PLAIN, 13));
-                    setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
-                    return this;
-                }
-            });
+                .setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public java.awt.Component getTableCellRendererComponent(
+                    JTable t, Object v, boolean sel, boolean foc,
+                    int row, int col) {
+                super.getTableCellRendererComponent(
+                        t, v, sel, foc, row, col);
+                setForeground(sel ? Color.WHITE : TXN_BLUE);
+                setBackground(sel ? NAVY_DARK :
+                        (row % 2 == 0 ? ROW_NORMAL : ROW_ALT));
+                setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+                return this;
+            }
+        });
 
-        JScrollPane scrollPane = new JScrollPane(recentTxnTable);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(Color.WHITE);
-
-        panel.add(scrollPane, BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(recentTxnTable);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(Color.WHITE);
+        panel.add(scroll, BorderLayout.CENTER);
         return panel;
     }
 
-    // Station Overview panel
     private JPanel buildStationOverviewPanel() {
         JPanel panel = new JPanel(new BorderLayout()) {
             @Override
@@ -233,7 +224,7 @@ public class DashboardPanel extends JPanel {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                        RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(CARD_BG);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
             }
@@ -242,36 +233,104 @@ public class DashboardPanel extends JPanel {
         panel.setPreferredSize(new Dimension(260, 0));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Section title
         JLabel title = new JLabel("Station Overview");
         title.setFont(new Font("Arial", Font.BOLD, 14));
         title.setForeground(new Color(0x222222));
         title.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
         panel.add(title, BorderLayout.NORTH);
 
-        // Station rows container
-        stationListPanel = new JPanel();
-        stationListPanel.setLayout(new java.awt.GridLayout(0, 1, 0, 4));
+        stationListPanel = new JPanel(new GridLayout(0, 1, 0, 4));
         stationListPanel.setOpaque(false);
 
         JScrollPane scroll = new JScrollPane(stationListPanel);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(Color.WHITE);
-
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
     }
 
     // ---------------------------------------------------------------
-    // Builds one station row for the overview
-    // status: "available", "occupied", "maintenance"
+    // refreshData() — call this every time the tab is shown
+    // Loads all data from DAOs on a background thread
     // ---------------------------------------------------------------
-    private JPanel buildStationRow(String stationName, String status) {
+    public void refreshData() {
+        new SwingWorker<Void, Void>() {
+
+            double         todayTotal;
+            int            occupiedCount;
+            int            totalStations;
+            int            lowStockCount;
+            int            activeSessionCount;
+            java.util.List<Object[]> richRows;
+            java.util.List<Station>  stations;
+
+            @Override
+            protected Void doInBackground() {
+                todayTotal         = transactionDAO.getTodayTotal();
+                occupiedCount      = stationDAO.getOccupiedCount();
+                totalStations      = stationDAO.getAllStations().size();
+                lowStockCount      = productDAO.getLowStockCount();
+                activeSessionCount = sessionDAO.getActiveSessionCount();
+                richRows           = transactionDAO
+                                         .getRecentTransactionsRich(5);
+                stations           = stationDAO.getAllStations();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                // ---- KPI cards ----
+                todaysSalesValue.setText(
+                        String.format("₱%,.2f", todayTotal));
+                activeStationsValue.setText(
+                        occupiedCount + " / " + totalStations);
+                lowStockValue.setText(
+                        lowStockCount > 0 ? lowStockCount + " ⚠" : "0");
+                activeSessionsValue.setText(
+                        String.valueOf(activeSessionCount));
+
+                // ---- Transactions table ----
+                recentTxnModel.setRowCount(0);
+                for (Object[] row : richRows) {
+                    int    txnId     = (int)    row[0];
+                    java.sql.Timestamp date =
+                            (java.sql.Timestamp) row[1];
+                    int    itemCount = (int)    row[2];
+                    double total     = (double) row[3];
+                    String username  = (String) row[4];
+
+                    String itemLabel = itemCount == 1
+                            ? "1 item" : itemCount + " items";
+                    String dateStr   = DATE_FMT.format(date);
+
+                    recentTxnModel.addRow(new Object[]{
+                        String.format("TXN-%04d", txnId),
+                        dateStr,
+                        itemLabel,
+                        String.format("₱%,.2f", total),
+                        username != null ? username : "—"
+                    });
+                }
+
+                // ---- Station overview ----
+                stationListPanel.removeAll();
+                for (Station s : stations) {
+                    stationListPanel.add(
+                            buildStationRow(s.getStationName(),
+                                            s.getStatus()));
+                }
+                stationListPanel.revalidate();
+                stationListPanel.repaint();
+            }
+        }.execute();
+    }
+
+    // One row in the station overview list
+    private JPanel buildStationRow(String name, String status) {
         JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setOpaque(false);
         row.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
 
-        // Colored dot
         Color dotColor;
         Color textColor;
         String statusText;
@@ -287,7 +346,7 @@ public class DashboardPanel extends JPanel {
                 textColor  = STATUS_GRAY;
                 statusText = "Maintenance";
                 break;
-            default: // available
+            default:
                 dotColor   = STATUS_GREEN;
                 textColor  = STATUS_GREEN;
                 statusText = "Available";
@@ -299,7 +358,7 @@ public class DashboardPanel extends JPanel {
         dot.setForeground(dotColor);
         dot.setPreferredSize(new Dimension(20, 20));
 
-        JLabel nameLabel = new JLabel(stationName);
+        JLabel nameLabel = new JLabel(name);
         nameLabel.setFont(new Font("Arial", Font.PLAIN, 13));
         nameLabel.setForeground(new Color(0x222222));
 
@@ -315,13 +374,11 @@ public class DashboardPanel extends JPanel {
 
         row.add(left,        BorderLayout.WEST);
         row.add(statusLabel, BorderLayout.EAST);
-
         return row;
     }
 
-    // Style each table
+    // Table styling
     private void styleTable(JTable table) {
-        // Header
         JTableHeader header = table.getTableHeader();
         header.setBackground(NAVY_DARK);
         header.setForeground(Color.WHITE);
@@ -329,7 +386,6 @@ public class DashboardPanel extends JPanel {
         header.setPreferredSize(new Dimension(0, 38));
         header.setReorderingAllowed(false);
 
-        // Rows
         table.setFont(new Font("Arial", Font.PLAIN, 13));
         table.setRowHeight(36);
         table.setShowGrid(false);
@@ -339,85 +395,40 @@ public class DashboardPanel extends JPanel {
         table.setFillsViewportHeight(true);
         table.setFocusable(false);
 
-        // Alternating row colors + cell padding
-        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+        table.setDefaultRenderer(Object.class,
+                new DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(
-                    JTable t, Object value, boolean isSelected,
-                    boolean hasFocus, int row, int col) {
+                    JTable t, Object v, boolean sel, boolean foc,
+                    int row, int col) {
                 super.getTableCellRendererComponent(
-                        t, value, isSelected, hasFocus, row, col);
-                if (isSelected) {
+                        t, v, sel, foc, row, col);
+                if (sel) {
                     setBackground(NAVY_DARK);
                     setForeground(Color.WHITE);
                 } else {
                     setBackground(row % 2 == 0 ? ROW_NORMAL : ROW_ALT);
                     setForeground(new Color(0x333333));
                 }
-                setFont(new Font("Arial", Font.PLAIN, 13));
                 setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+                setFont(new Font("Arial", Font.PLAIN, 13));
                 return this;
             }
         });
     }
 
-    // Load sample data (will replace with real data later)
-    private void loadSampleData() {
-        // KPI cards
-        todaysSalesValue.setText("₱2,340.00");
-        activeStationsValue.setText("3 / 7");
-        lowStockValue.setText("2 ⚠");
-        activeSessionsValue.setText("3");
-
-        // Recent transactions
-        Object[][] txns = {
-            {"TXN-0042", "Apr 9 10:34 AM", "3 items", "₱105.00", "admin"},
-            {"TXN-0041", "Apr 9 10:10 AM", "2 items", "₱55.00",  "cashier1"},
-            {"TXN-0040", "Apr 9 09:55 AM", "5 items", "₱195.00", "cashier1"},
-            {"TXN-0039", "Apr 9 09:30 AM", "1 item",  "₱20.00",  "admin"},
-            {"TXN-0038", "Apr 9 09:05 AM", "4 items", "₱130.00", "cashier1"},
-        };
-        for (Object[] row : txns) {
-            recentTxnModel.addRow(row);
-        }
-
-        // Station overview
-        String[][] stations = {
-            {"PC-01",  "available"},
-            {"PC-02",  "occupied"},
-            {"PC-03",  "occupied"},
-            {"PC-04",  "available"},
-            {"PC-05",  "maintenance"},
-            {"VIP-01", "available"},
-            {"VIP-02", "occupied"},
-        };
-        for (String[] s : stations) {
-            stationListPanel.add(buildStationRow(s[0], s[1]));
-        }
-    }
-
-    // ---------------------------------------------------------------
-    // refreshData() — call this when tab becomes visible
-    // Replace sample data with real DAO calls here later
-    // ---------------------------------------------------------------
-    public void refreshData() {
-        // Example (uncomment when DAOs are ready):
-        // recentTxnModel.setRowCount(0);
-        // TransactionDAO txnDao = new TransactionDAO(DBConnection.getConnection());
-        // for (Transaction t : txnDao.getRecentTransactions(5)) {
-        //     recentTxnModel.addRow(new Object[]{...});
-        // }
-    }
-
-    // Main test code
+    // Main — testing
     public static void main(String[] args) {
         java.awt.EventQueue.invokeLater(() -> {
-            javax.swing.JFrame f = new javax.swing.JFrame("Dashboard Test");
+            javax.swing.JFrame f =
+                    new javax.swing.JFrame("Dashboard Test");
             f.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE);
             f.setSize(1280, 720);
             f.setLocationRelativeTo(null);
-            f.add(new DashboardPanel());
+            DashboardPanel panel = new DashboardPanel();
+            f.add(panel);
             f.setVisible(true);
+            panel.refreshData();
         });
     }
 }

@@ -51,13 +51,11 @@ public class MainFrame extends JFrame {
     private ReportsPanel reportsPanel;
 
     // The logged-in user info (set via constructor)
-    private String username;
-    private String role;
+    private model.User currentUser;
 
     // Constructor
-    public MainFrame(String username, String role) {
-        this.username = username;
-        this.role     = role;
+    public MainFrame(model.User user) {
+        this.currentUser = user;
 
         setTitle("ByteZone Café POS");
         setSize(1280, 720);
@@ -77,7 +75,7 @@ public class MainFrame extends JFrame {
         buildTabbedPane();
 
         // Apply role-based access (cashiers cannot see Reports)
-        if (!role.equalsIgnoreCase("admin")) {
+        if (!currentUser.isAdmin()) {
             mainTabbedPane.setEnabledAt(4, false);
         }
     }
@@ -134,12 +132,12 @@ public class MainFrame extends JFrame {
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightPanel.setOpaque(false);
 
-        loggedUserLabel = new JLabel(username);
+        loggedUserLabel = new JLabel(currentUser.getUsername());
         loggedUserLabel.setFont(new Font("Arial", Font.PLAIN, 13));
         loggedUserLabel.setForeground(Color.WHITE);
 
         // Role badge (rounded pill)
-        roleBadgeLabel = new JLabel(capitalize(role)) {
+        roleBadgeLabel = new JLabel(capitalize(currentUser.getRole())) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g;
@@ -250,6 +248,38 @@ public class MainFrame extends JFrame {
         mainTabbedPane.addTab("Sales",     salesPanel);      // index 2
         mainTabbedPane.addTab("Products ⚠", productsPanel); // index 3
         mainTabbedPane.addTab("Reports ⚠",  reportsPanel);  // index 4
+        
+        // Refresh data every time a tab becomes visible
+        mainTabbedPane.addChangeListener(e -> {
+            int selected = mainTabbedPane.getSelectedIndex();
+            switch (selected) {
+                case 0:
+                    dashboardPanel.refreshData();
+                    break;
+                case 1:
+                    stationsPanel.refreshData();
+                    break;
+                case 2:
+                    salesPanel.loadProducts();
+                    break;
+                case 3:
+                    productsPanel.refreshData();
+                    updateTabBadges();
+                    break;
+                case 4:
+                    reportsPanel.refreshData();
+                    updateTabBadges();
+                    break;
+            }
+        });
+
+        // Also pass the current user down to other panels
+        salesPanel.setCurrentUser(currentUser);
+        stationsPanel.setCurrentUser(currentUser);
+
+        // Load dashboard immediately on open
+        dashboardPanel.refreshData();
+        updateTabBadges();
 
         // Custom tab renderer for active underline indicator
         mainTabbedPane.addChangeListener(e -> mainTabbedPane.repaint());
@@ -299,7 +329,23 @@ public class MainFrame extends JFrame {
     // Main test code
     public static void main(String[] args) {
         java.awt.EventQueue.invokeLater(() -> {
-            new MainFrame("admin", "admin").setVisible(true);
+            model.User testUser = new model.User(1, "admin", "", "admin", null);
+            new MainFrame(testUser).setVisible(true);
         });
+    }
+    
+    // ---------------------------------------------------------------
+    // Updates the Products and Reports tab titles based on live
+    // low-stock count. Call this after any product or sale change.
+    // ---------------------------------------------------------------
+    public void updateTabBadges() {
+        new Thread(() -> {
+            int count = new dao.ProductDAO().getLowStockCount();
+            java.awt.EventQueue.invokeLater(() -> {
+                String badge = count > 0 ? " ⚠" : "";
+                mainTabbedPane.setTitleAt(3, "Products" + badge);
+                mainTabbedPane.setTitleAt(4, "Reports"  + badge);
+            });
+        }).start();
     }
 }
