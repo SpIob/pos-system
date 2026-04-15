@@ -25,8 +25,18 @@ import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.SwingWorker;
+
+import dao.ProductDAO;
+import dao.TransactionDAO;
+import model.Product;
+import model.Transaction;
+import java.text.SimpleDateFormat;
 
 public class ReportsPanel extends JPanel {
+    
+    private final TransactionDAO transactionDAO = new TransactionDAO();
+    private final ProductDAO     productDAO     = new ProductDAO();
 
     // Colors
     private static final Color PAGE_BG    = new Color(0xF5F5F5);
@@ -59,7 +69,7 @@ public class ReportsPanel extends JPanel {
         setBackground(PAGE_BG);
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         buildUI();
-        loadSampleData();
+        refreshData();
     }
 
     // Build UI
@@ -373,32 +383,71 @@ public class ReportsPanel extends JPanel {
         });
     }
 
-    // Load sample data
-    private void loadSampleData() {
-        todaysSalesValue.setText("₱2,340.00");
-        totalTxnValue.setText("14");
-        lowStockValue.setText("2 ⚠");
+    // Load and refresh  data
+    public void refreshData() {
+        new SwingWorker<Void, Void>() {
 
-        Object[][] txns = {
-            {"TXN-0042","Apr 9 10:34 AM","3 items","₱105.00","admin"},
-            {"TXN-0041","Apr 9 10:10 AM","2 items","₱55.00", "cashier1"},
-            {"TXN-0040","Apr 9 09:55 AM","5 items","₱195.00","cashier1"},
-            {"TXN-0039","Apr 9 09:30 AM","1 item", "₱20.00", "admin"},
-            {"TXN-0038","Apr 9 09:05 AM","4 items","₱130.00","cashier1"},
-        };
-        for (Object[] r : txns) txnModel.addRow(r);
+            double todayTotal;
+            int    todayCount;
+            int    lowStockCount;
+            java.util.List<Object[]> richRows;
+            java.util.List<Product>  allProducts;
 
-        Object[][] inv = {
-            {"Coke 500ml",    50, "OK"},
-            {"Mineral Water", 60, "OK"},
-            {"Iced Coffee",   30, "OK"},
-            {"Chips (Regular)",40,"OK"},
-            {"Cup Noodles",   25, "OK"},
-            {"Chocolate Bar", 30, "OK"},
-            {"Headset Rental", 2, "LOW"},
-            {"USB (per use)",  3, "LOW"},
-        };
-        for (Object[] r : inv) inventoryModel.addRow(r);
+            @Override
+            protected Void doInBackground() {
+                todayTotal    = transactionDAO.getTodayTotal();
+                todayCount    = transactionDAO.getTodayCount();
+                lowStockCount = productDAO.getLowStockCount();
+                richRows      = transactionDAO.getRecentTransactionsRich(5);
+                allProducts   = productDAO.getAllProducts();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                SimpleDateFormat fmt =
+                        new SimpleDateFormat("MMM d hh:mm a");
+
+                // ---- KPI cards ----
+                todaysSalesValue.setText(
+                        String.format("₱%,.2f", todayTotal));
+                totalTxnValue.setText(String.valueOf(todayCount));
+                lowStockValue.setText(
+                        lowStockCount > 0 ? lowStockCount + " ⚠" : "0");
+
+                // ---- Transactions table ----
+                txnModel.setRowCount(0);
+                for (Object[] row : richRows) {
+                    int    txnId     = (int)    row[0];
+                    java.sql.Timestamp date =
+                            (java.sql.Timestamp) row[1];
+                    int    itemCount = (int)    row[2];
+                    double total     = (double) row[3];
+                    String username  = (String) row[4];
+
+                    String itemLabel = itemCount == 1
+                            ? "1 item" : itemCount + " items";
+
+                    txnModel.addRow(new Object[]{
+                        String.format("TXN-%04d", txnId),
+                        fmt.format(date),
+                        itemLabel,
+                        String.format("₱%,.2f", total),
+                        username != null ? username : "—"
+                    });
+                }
+
+                // ---- Inventory table ----
+                inventoryModel.setRowCount(0);
+                for (Product p : allProducts) {
+                    inventoryModel.addRow(new Object[]{
+                        p.getProductName(),
+                        p.getStockQuantity(),
+                        p.getStockStatus()
+                    });
+                }
+            }
+        }.execute();
     }
 
     // Export to CSV

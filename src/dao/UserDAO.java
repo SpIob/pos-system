@@ -74,6 +74,31 @@ public class UserDAO {
 
         return null;
     }
+    
+    // ---------------------------------------------------------------
+    // Get username by user ID — used to populate the Cashier column
+    // in Dashboard and Reports transaction tables
+    // ---------------------------------------------------------------
+    public String getUsernameById(int userId) {
+        String sql = "SELECT username FROM users WHERE user_id = ?";
+
+        Connection conn = DBConnection.getConnection();
+        if (conn == null) return "—";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) return rs.getString("username");
+
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] getUsernameById() failed.");
+            e.printStackTrace();
+        } finally {
+            DBConnection.closeConnection(conn);
+        }
+
+        return "—";
+    }
 
     // Map a ResultSet row to a User object
     private User mapRow(ResultSet rs) throws SQLException {

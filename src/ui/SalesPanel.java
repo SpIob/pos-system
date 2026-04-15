@@ -25,8 +25,23 @@ import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.SwingWorker;
+
+import dao.ProductDAO;
+import dao.TransactionDAO;
 
 public class SalesPanel extends JPanel {
+    
+    private final ProductDAO     productDAO     = new ProductDAO();
+    private final TransactionDAO transactionDAO = new TransactionDAO();
+    private model.User           currentUser;   // set from MainFrame
+
+    public void setCurrentUser(model.User user) {
+        this.currentUser = user;
+    }
+    
+    private final java.util.Map<String, Integer> productIdMap =
+        new java.util.HashMap<>();
 
     // Colors
     private static final Color PAGE_BG     = new Color(0xF5F5F5);
@@ -40,20 +55,9 @@ public class SalesPanel extends JPanel {
     private static final Color ROW_ALT     = new Color(0xF0F4F8);
     private static final Color TOTAL_BG    = new Color(0xEEF4FA);
 
-    // Sample Products
-    private static final String[][] PRODUCTS = {
-        {"Coke 500ml",    "25.00"},
-        {"Mineral Water", "15.00"},
-        {"Iced Coffee",   "35.00"},
-        {"Chips (Regular)","20.00"},
-        {"Cup Noodles",   "15.00"},
-        {"Chocolate Bar", "18.00"},
-        {"Headset Rental","10.00"},
-        {"USB (per use)", "5.00"},
-    };
-
     // Components
-    private DefaultTableModel orderModel;
+    private JPanel             productsGridPanel;
+    private DefaultTableModel  orderModel;
     private JTable            orderTable;
     private JLabel            totalLabel;
     private JTextField        amountPaidField;
@@ -78,7 +82,7 @@ public class SalesPanel extends JPanel {
 
     // Products panel
     private JPanel buildProductsPanel() {
-        JPanel panel = new JPanel(new BorderLayout()) {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 12)) {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
@@ -89,33 +93,63 @@ public class SalesPanel extends JPanel {
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
             }
         };
-        panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        wrapper.setOpaque(false);
+        wrapper.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel title = new JLabel("Products");
         title.setFont(new Font("Arial", Font.BOLD, 14));
         title.setForeground(new Color(0x222222));
         title.setBorder(BorderFactory.createEmptyBorder(0, 0, 14, 0));
-        panel.add(title, BorderLayout.NORTH);
+        wrapper.add(title, BorderLayout.NORTH);
 
-        // Grid of product buttons — 3 columns
-        JPanel grid = new JPanel(new GridLayout(0, 3, 10, 10));
-        grid.setOpaque(false);
+        productsGridPanel = new JPanel(new GridLayout(0, 3, 10, 10));
+        productsGridPanel.setOpaque(false);
 
-        for (String[] product : PRODUCTS) {
-            grid.add(buildProductButton(product[0], product[1]));
-        }
-
-        JScrollPane scroll = new JScrollPane(grid);
+        JScrollPane scroll = new JScrollPane(productsGridPanel);
         scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.getViewport().setBackground(CARD_BG);
+        scroll.getViewport().setBackground(PAGE_BG);
+        wrapper.add(scroll, BorderLayout.CENTER);
 
-        panel.add(scroll, BorderLayout.CENTER);
-        return panel;
+        loadProducts(); // initial population from DAO
+        return wrapper;
+    }
+
+    public void loadProducts() {
+        new SwingWorker<java.util.List<model.Product>, Void>() {
+            @Override
+            protected java.util.List<model.Product> doInBackground() {
+                return productDAO.getAllProducts();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    java.util.List<model.Product> products = get();
+                    productsGridPanel.removeAll();
+                    for (model.Product p : products) {
+                        productsGridPanel.add(buildProductButton(
+                            p.getProductName(),
+                            String.format("%.2f", p.getPrice()),
+                            p.getProductId()
+                        ));
+                    }
+                    productsGridPanel.revalidate();
+                    productsGridPanel.repaint();
+
+                    // Also refresh station dropdown
+                    loadStationDropdown();
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }.execute();
     }
 
     // Product button
-    private JButton buildProductButton(String name, String price) {
+    private JButton buildProductButton(String name, String price, int productId) {
+        productIdMap.put(name, productId);
+        
         // HTML label for two-line layout
         String label = "<html><center><b>" + name + "</b><br>"
                      + "<font color='#2D6DA8'>₱" + price + "</font></center></html>";
@@ -418,10 +452,11 @@ public class SalesPanel extends JPanel {
             return;
         }
 
-        double total = parseTotal();
+        double total;
         double paid;
         try {
-            paid = Double.parseDouble(amountPaidField.getText().trim());
+            total = parseTotal();
+            paid  = Double.parseDouble(amountPaidField.getText().trim());
         } catch (NumberFormatException ex) {
             javax.swing.JOptionPane.showMessageDialog(this,
                 "Please enter a valid amount paid.",
@@ -438,27 +473,91 @@ public class SalesPanel extends JPanel {
             return;
         }
 
-        // Build receipt lines from order table
-        StringBuilder lines = new StringBuilder();
+        // Build Transaction object
+        int userId = (currentUser != null) ? currentUser.getUserId() : 1;
+
+        model.Transaction txn = new model.Transaction();
+        txn.setUserId(userId);
+        txn.setTotalAmount(total);
+        txn.setAmountPaid(paid);
+        txn.setChangeGiven(paid - total);
+
+        // Link to station if selected
+        String selectedStation =
+                (String) stationComboBox.getSelectedItem();
+        // session_id linkage handled in Phase 5 (StationsPanel integration)
+
+        // Build TransactionItem list
+        java.util.List<model.TransactionItem> items = new java.util.ArrayList<>();
+        StringBuilder receiptLines = new StringBuilder();
+
         for (int i = 0; i < orderModel.getRowCount(); i++) {
-            String item     = orderModel.getValueAt(i, 0).toString();
-            int    qty      = (int) orderModel.getValueAt(i, 1);
-            String subtotal = orderModel.getValueAt(i, 3).toString();
-            lines.append(item).append(" x").append(qty)
-                 .append("  ").append(subtotal).append("\n");
+            String itemName  = orderModel.getValueAt(i, 0).toString();
+            int    qty       = (int) orderModel.getValueAt(i, 1);
+            double unitPrice = Double.parseDouble(
+                orderModel.getValueAt(i, 2).toString()
+                          .replace("₱", "").replace(",", ""));
+            double subtotal  = qty * unitPrice;
+
+            model.TransactionItem item = new model.TransactionItem();
+            item.setProductId(
+                productIdMap.getOrDefault(itemName, 0));
+            item.setItemDescription(itemName);
+            item.setQuantity(qty);
+            item.setUnitPrice(unitPrice);
+            item.setSubtotal(subtotal);
+            items.add(item);
+
+            receiptLines.append(itemName)
+                        .append(" x").append(qty)
+                        .append("  ₱").append(String.format("%.2f", subtotal))
+                        .append("\n");
         }
 
+        // Save to database
+        int newTxnId = transactionDAO.saveTransaction(txn, items);
+
+        if (newTxnId < 0) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "Transaction could not be saved. Check your connection.",
+                "Save Error",
+                javax.swing.JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Reduce stock for each product
+        for (model.TransactionItem item : items) {
+            if (item.getProductId() > 0) {
+                productDAO.reduceStock(
+                    item.getProductId(), item.getQuantity());
+            }
+        }
+
+        // Show receipt
         ReceiptDialog receipt = new ReceiptDialog(
             null,
-            "TXN-" + String.format("%04d", (int)(Math.random() * 9999)),
-            lines.toString(),
+            String.format("TXN-%04d", newTxnId),
+            receiptLines.toString(),
             total,
             paid
         );
         receipt.setVisible(true);
 
-        // Clear cart after successful charge
         clearCart();
+        loadProducts(); // refresh stock counts on buttons
+    }
+    
+    // Station dropdown loader
+    private void loadStationDropdown() {
+        dao.StationDAO stationDAO = new dao.StationDAO();
+        java.util.List<model.Station> available =
+                stationDAO.getAvailableStations();
+
+        stationComboBox.removeAllItems();
+        stationComboBox.addItem("Select station...");
+        for (model.Station s : available) {
+            stationComboBox.addItem(s.getStationName());
+        }
     }
 
     // Clear cart

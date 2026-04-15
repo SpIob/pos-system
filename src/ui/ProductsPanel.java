@@ -26,6 +26,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
+import javax.swing.SwingWorker;
+import dao.ProductDAO;
 
 public class ProductsPanel extends JPanel {
 
@@ -56,6 +58,9 @@ public class ProductsPanel extends JPanel {
     private JTable             productTable;
     private DefaultTableModel  productModel;
     private TableRowSorter<DefaultTableModel> sorter;
+    
+    // Connect to ProductDAO
+    private final ProductDAO productDAO = new ProductDAO();
 
     // Constructor
     public ProductsPanel() {
@@ -63,7 +68,7 @@ public class ProductsPanel extends JPanel {
         setBackground(PAGE_BG);
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         buildUI();
-        loadSampleData();
+        refreshData();
     }
 
     // Build UI
@@ -290,23 +295,6 @@ public class ProductsPanel extends JPanel {
         return scroll;
     }
 
-    // Load smaple data
-    private void loadSampleData() {
-        Object[][] data = {
-            {"Coke 500ml",    "Beverage", "₱25.00", 50, 10, "OK"},
-            {"Mineral Water", "Beverage", "₱15.00", 60, 10, "OK"},
-            {"Iced Coffee",   "Beverage", "₱35.00", 30, 5,  "OK"},
-            {"Chips (Regular)","Snack",   "₱20.00", 40, 10, "OK"},
-            {"Cup Noodles",   "Snack",    "₱15.00", 25, 5,  "OK"},
-            {"Chocolate Bar", "Snack",    "₱18.00", 30, 5,  "OK"},
-            {"Headset Rental","Other",    "₱10.00", 2,  2,  "LOW"},
-            {"USB (per use)", "Other",    "₱5.00",  3,  5,  "LOW"},
-        };
-        for (Object[] row : data) {
-            productModel.addRow(row);
-        }
-    }
-
     // Search filter
     private void applyFilter() {
         String text = searchField.getText().trim();
@@ -318,49 +306,172 @@ public class ProductsPanel extends JPanel {
         }
     }
 
-    // Add/Edit/Delete Actions
+    // Load live data from ProductDAO
+    public void refreshData() {
+        new SwingWorker<Void, Void>() {
+            java.util.List<model.Product> products;
+            java.util.List<model.Product> lowStock;
+
+            @Override
+            protected Void doInBackground() {
+                products = productDAO.getAllProducts();
+                lowStock = productDAO.getLowStockProducts();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                // Refresh product table
+                productModel.setRowCount(0);
+                productIdList.clear();
+                for (model.Product p : products) {
+                    productIdList.add(p.getProductId());
+                    productModel.addRow(new Object[]{
+                        p.getProductName(),
+                        capitalize(p.getCategory()),
+                        String.format("₱%.2f", p.getPrice()),
+                        p.getStockQuantity(),
+                        p.getLowStockThreshold(),
+                        p.getStockStatus()
+                    });
+                }
+
+                // Refresh low stock banner
+                if (lowStock.isEmpty()) {
+                    lowStockBanner.setVisible(false);
+                } else {
+                    StringBuilder msg = new StringBuilder(
+                            "⚠  Low Stock Alert: ");
+                    for (int i = 0; i < lowStock.size(); i++) {
+                        model.Product p = lowStock.get(i);
+                        msg.append(p.getProductName())
+                           .append(" (")
+                           .append(p.getStockQuantity())
+                           .append(" remaining)");
+                        if (i < lowStock.size() - 1) msg.append(", ");
+                    }
+                    lowStockLabel.setText(msg.toString());
+                    lowStockBanner.setVisible(true);
+                }
+            }
+        }.execute();
+    }
+
+    // Add product dialog — wired to ProductDAO on Save
     private void openAddDialog() {
         AddProductDialog dlg = new AddProductDialog(null, null);
+        dlg.setOnSaveListener(data -> {
+            model.Product p = new model.Product();
+            p.setProductName(data[0]);
+            p.setCategory(data[1].toLowerCase());
+            p.setPrice(Double.parseDouble(data[2]));
+            p.setStockQuantity(Integer.parseInt(data[3]));
+            p.setLowStockThreshold(Integer.parseInt(data[4]));
+
+            boolean saved = productDAO.addProduct(p);
+            if (saved) {
+                refreshData();
+            } else {
+                javax.swing.JOptionPane.showMessageDialog(
+                    ProductsPanel.this,
+                    "Failed to save product. Check your connection.",
+                    "Save Error",
+                    javax.swing.JOptionPane.ERROR_MESSAGE);
+            }
+        });
         dlg.setVisible(true);
     }
 
+    // Edit product dialog — pre-fills with selected row data
     private void openEditDialog() {
         int viewRow = productTable.getSelectedRow();
         if (viewRow < 0) return;
         int modelRow = productTable.convertRowIndexToModel(viewRow);
 
-        // Pass existing values to dialog
-        String name      = productModel.getValueAt(modelRow, 0).toString();
-        String category  = productModel.getValueAt(modelRow, 1).toString();
-        String price     = productModel.getValueAt(modelRow, 2)
-                                       .toString().replace("₱", "");
-        int    stock     = (int) productModel.getValueAt(modelRow, 3);
-        int    threshold = (int) productModel.getValueAt(modelRow, 4);
+        // Read current values from the table model
+        int    productId  = getProductIdAtRow(modelRow);
+        String name       = productModel.getValueAt(modelRow, 0).toString();
+        String category   = productModel.getValueAt(modelRow, 1).toString();
+        String price      = productModel.getValueAt(modelRow, 2)
+                                        .toString().replace("₱", "");
+        String stock      = productModel.getValueAt(modelRow, 3).toString();
+        String threshold  = productModel.getValueAt(modelRow, 4).toString();
 
         AddProductDialog dlg = new AddProductDialog(null,
-                new String[]{name, category, price,
-                             String.valueOf(stock),
-                             String.valueOf(threshold)});
+                new String[]{name, category, price, stock, threshold});
+
+        dlg.setOnSaveListener(data -> {
+            model.Product p = new model.Product();
+            p.setProductId(productId);
+            p.setProductName(data[0]);
+            p.setCategory(data[1].toLowerCase());
+            p.setPrice(Double.parseDouble(data[2]));
+            p.setStockQuantity(Integer.parseInt(data[3]));
+            p.setLowStockThreshold(Integer.parseInt(data[4]));
+
+            boolean saved = productDAO.updateProduct(p);
+            if (saved) {
+                refreshData();
+            } else {
+                javax.swing.JOptionPane.showMessageDialog(
+                    ProductsPanel.this,
+                    "Failed to update product. Check your connection.",
+                    "Update Error",
+                    javax.swing.JOptionPane.ERROR_MESSAGE);
+            }
+        });
         dlg.setVisible(true);
     }
 
+    // Delete selected product
     private void deleteSelected() {
         int viewRow = productTable.getSelectedRow();
         if (viewRow < 0) return;
 
-        int modelRow = productTable.convertRowIndexToModel(viewRow);
-        String name  = productModel.getValueAt(modelRow, 0).toString();
+        int    modelRow  = productTable.convertRowIndexToModel(viewRow);
+        int    productId = getProductIdAtRow(modelRow);
+        String name      = productModel.getValueAt(modelRow, 0).toString();
 
         int confirm = javax.swing.JOptionPane.showConfirmDialog(
             this,
-            "Delete \"" + name + "\"?",
+            "Delete \"" + name + "\"? This cannot be undone.",
             "Confirm Delete",
             javax.swing.JOptionPane.YES_NO_OPTION,
             javax.swing.JOptionPane.WARNING_MESSAGE
         );
+
         if (confirm == javax.swing.JOptionPane.YES_OPTION) {
-            productModel.removeRow(modelRow);
+            boolean deleted = productDAO.deleteProduct(productId);
+            if (deleted) {
+                refreshData();
+            } else {
+                javax.swing.JOptionPane.showMessageDialog(
+                    this,
+                    "Failed to delete product. It may be linked to"
+                    + " existing transactions.",
+                    "Delete Error",
+                    javax.swing.JOptionPane.ERROR_MESSAGE);
+            }
         }
+    }
+
+    // ---------------------------------------------------------------
+    // Helper: product IDs are not shown in the table — track them
+    // in a parallel list that gets rebuilt on every refreshData()
+    // ---------------------------------------------------------------
+    private java.util.List<Integer> productIdList = new java.util.ArrayList<>();
+
+    private int getProductIdAtRow(int modelRow) {
+        if (modelRow >= 0 && modelRow < productIdList.size()) {
+            return productIdList.get(modelRow);
+        }
+        return -1;
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.substring(0, 1).toUpperCase()
+             + s.substring(1).toLowerCase();
     }
 
     // Reusable rounded button

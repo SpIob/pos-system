@@ -47,6 +47,18 @@ public class AddProductDialog extends JDialog {
     // If non-null, dialog is in Edit mode
     private final String[] existingValues;
 
+    // Callback interface — ProductsPanel listens for Save events
+    public interface OnSaveListener {
+        // data[]: {name, category, price, stockQty, threshold}
+        void onSave(String[] data);
+    }
+
+    private OnSaveListener onSaveListener;
+
+    public void setOnSaveListener(OnSaveListener listener) {
+        this.onSaveListener = listener;
+    }
+
     // ---------------------------------------------------------------
     // Constructor
     // existingValues: {name, category, price, stock, threshold}
@@ -216,10 +228,13 @@ public class AddProductDialog extends JDialog {
 
     // Save handler
     private void handleSave() {
-        String name  = nameField.getText().trim();
-        String price = priceField.getText().trim();
+        String name      = nameField.getText().trim();
+        String price     = priceField.getText().trim();
+        String category  = (String) categoryCombo.getSelectedItem();
+        int    stock     = (int) stockSpinner.getValue();
+        int    threshold = (int) thresholdSpinner.getValue();
 
-        if (name.isEmpty()) {
+        if (name.isEmpty() || name.equals("e.g. Coke 500ml")) {
             javax.swing.JOptionPane.showMessageDialog(this,
                 "Product name cannot be empty.",
                 "Validation Error",
@@ -240,8 +255,17 @@ public class AddProductDialog extends JDialog {
             return;
         }
 
-        // All valid — close dialog
-        // When DAOs are ready, call ProductDAO here before dispose()
+        // Fire the listener back to ProductsPanel
+        if (onSaveListener != null) {
+            onSaveListener.onSave(new String[]{
+                name,
+                category,
+                price,
+                String.valueOf(stock),
+                String.valueOf(threshold)
+            });
+        }
+
         dispose();
     }
 
