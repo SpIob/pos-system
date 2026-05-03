@@ -24,7 +24,7 @@ public class SessionDAO {
     public int startSession(int stationId, int userId) {
         String sql = "INSERT INTO sessions "
                    + "(station_id, user_id, start_time, status) "
-                   + "VALUES (?, ?, NOW(), 'active')";
+                   + "VALUES (?, ?, ?, 'active')";
 
         Connection conn = DBConnection.getConnection();
         if (conn == null) return -1;
@@ -34,20 +34,18 @@ public class SessionDAO {
 
             stmt.setInt(1, stationId);
             stmt.setInt(2, userId);
-            stmt.executeUpdate();
+            // Pass timestamp from Java — avoids MySQL server
+            // timezone mismatch with Railway UTC vs Asia/Manila
+            stmt.setTimestamp(3,
+                new java.sql.Timestamp(System.currentTimeMillis()));
 
+            stmt.executeUpdate();
             ResultSet keys = stmt.getGeneratedKeys();
-            if (keys.next()) {
-                return keys.getInt(1);
-            }
+            if (keys.next()) return keys.getInt(1);
 
         } catch (SQLException e) {
-            System.err.println("[SessionDAO] startSession() failed.");
             e.printStackTrace();
-        } finally {
-            DBConnection.closeConnection(conn);
         }
-
         return -1;
     }
 
@@ -78,7 +76,6 @@ public class SessionDAO {
             return updateStmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.err.println("[SessionDAO] endSession() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -109,7 +106,6 @@ public class SessionDAO {
                 sessions.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            System.err.println("[SessionDAO] getActiveSessions() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -138,7 +134,6 @@ public class SessionDAO {
             if (rs.next()) return mapRow(rs);
 
         } catch (SQLException e) {
-            System.err.println("[SessionDAO] getActiveSessionByStation() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -160,7 +155,6 @@ public class SessionDAO {
             if (rs.next()) return rs.getInt(1);
 
         } catch (SQLException e) {
-            System.err.println("[SessionDAO] getActiveSessionCount() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);

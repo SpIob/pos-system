@@ -27,17 +27,7 @@ import dao.UserDAO;
 import model.User;
 
 public class LoginFrame extends JFrame {
-
-    // Colors
-    private static final Color BG_DARK    = new Color(0x1A2C4E);
-    private static final Color BG_DARKER  = new Color(0x152340);
-    private static final Color NAVY       = new Color(0x1C3557);
-    private static final Color BLUE_BTN   = new Color(0x2D6DA8);
-    private static final Color BLUE_HOVER = new Color(0x245A8E);
-    private static final Color GRAY_TEXT  = new Color(0x888888);
-    private static final Color FIELD_BORDER = new Color(0xCCCCCC);
-    private static final Color PLACEHOLDER = new Color(0xAAAAAA);
-
+    
     // Components
     private JLabel     logoLabel;
     private JLabel     titleLabel;
@@ -57,7 +47,14 @@ public class LoginFrame extends JFrame {
         setMinimumSize(new Dimension(1280, 720));
         setResizable(false);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                database.DBConnection.shutdown();
+                System.exit(0);
+            }
+        });
 
         buildUI();
     }
@@ -75,8 +72,8 @@ public class LoginFrame extends JFrame {
                                     RenderingHints.VALUE_ANTIALIAS_ON);
                 // Gradient: top-left darker, bottom-right slightly lighter
                 g2.setPaint(new java.awt.GradientPaint(
-                    0, 0, BG_DARKER,
-                    getWidth(), getHeight(), BG_DARK
+                    0, 0, UIHelper.BG_DARKER,
+                    getWidth(), getHeight(), UIHelper.BG_DARK
                 ));
                 g2.fillRect(0, 0, getWidth(), getHeight());
             }
@@ -127,8 +124,8 @@ public class LoginFrame extends JFrame {
 
         // --- App title ---
         titleLabel = new JLabel("ByteZone Café POS", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        titleLabel.setForeground(NAVY);
+        titleLabel.setFont(new Font("Dialog", Font.BOLD, 18));
+        titleLabel.setForeground(UIHelper.NAVY);
 
         gbc.gridy = 1;
         gbc.insets = new Insets(0, 40, 4, 40);
@@ -137,8 +134,8 @@ public class LoginFrame extends JFrame {
 
         // --- Subtitle ---
         subtitleLabel = new JLabel("Your All-in-One Café Solution", SwingConstants.CENTER);
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        subtitleLabel.setForeground(GRAY_TEXT);
+        subtitleLabel.setFont(UIHelper.FONT_PLAIN_SM);
+        subtitleLabel.setForeground(UIHelper.STATUS_GRAY);
 
         gbc.gridy = 2;
         gbc.insets = new Insets(0, 40, 12, 40);
@@ -166,7 +163,7 @@ public class LoginFrame extends JFrame {
         usernameField.setPreferredSize(new Dimension(280, 38));
         usernameField.setFont(new Font("Arial", Font.PLAIN, 13));
         usernameField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(FIELD_BORDER, 1),
+            BorderFactory.createLineBorder(UIHelper.FIELD_BORDER, 1),
             BorderFactory.createEmptyBorder(6, 10, 6, 10)
         ));
         addPlaceholder(usernameField, "Enter username");
@@ -190,7 +187,7 @@ public class LoginFrame extends JFrame {
         passwordField.setPreferredSize(new Dimension(280, 38));
         passwordField.setFont(new Font("Arial", Font.PLAIN, 13));
         passwordField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(FIELD_BORDER, 1),
+            BorderFactory.createLineBorder(UIHelper.FIELD_BORDER, 1),
             BorderFactory.createEmptyBorder(6, 10, 6, 10)
         ));
         passwordField.setEchoChar('•');
@@ -213,7 +210,7 @@ public class LoginFrame extends JFrame {
         };
         loginButton.setFont(new Font("Arial", Font.BOLD, 14));
         loginButton.setForeground(Color.WHITE);
-        loginButton.setBackground(BLUE_BTN);
+        loginButton.setBackground(UIHelper.TXN_BLUE);
         loginButton.setOpaque(false);
         loginButton.setContentAreaFilled(false);
         loginButton.setBorderPainted(false);
@@ -225,12 +222,12 @@ public class LoginFrame extends JFrame {
         loginButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                loginButton.setBackground(BLUE_HOVER);
+                loginButton.setBackground(UIHelper.BLUE_HOVER);
                 loginButton.repaint();
             }
             @Override
             public void mouseExited(MouseEvent e) {
-                loginButton.setBackground(BLUE_BTN);
+                loginButton.setBackground(UIHelper.TXN_BLUE);
                 loginButton.repaint();
             }
         });
@@ -299,7 +296,7 @@ public class LoginFrame extends JFrame {
     // Placeholder text
     private void addPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
-        field.setForeground(PLACEHOLDER);
+        field.setForeground(UIHelper.PLACEHOLDER);
 
         field.addFocusListener(new FocusAdapter() {
             @Override
@@ -313,7 +310,7 @@ public class LoginFrame extends JFrame {
             public void focusLost(FocusEvent e) {
                 if (field.getText().isEmpty()) {
                     field.setText(placeholder);
-                    field.setForeground(PLACEHOLDER);
+                    field.setForeground(UIHelper.PLACEHOLDER);
                 }
             }
         });

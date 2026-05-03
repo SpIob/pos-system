@@ -34,7 +34,6 @@ public class StationDAO {
                 stations.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            System.err.println("[StationDAO] getAllStations() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -62,7 +61,6 @@ public class StationDAO {
                 stations.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            System.err.println("[StationDAO] getAvailableStations() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -84,7 +82,6 @@ public class StationDAO {
             if (rs.next()) return rs.getInt(1);
 
         } catch (SQLException e) {
-            System.err.println("[StationDAO] getOccupiedCount() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -109,7 +106,6 @@ public class StationDAO {
             return stmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.err.println("[StationDAO] updateStatus() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);

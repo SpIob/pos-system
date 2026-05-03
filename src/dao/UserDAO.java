@@ -66,7 +66,6 @@ public class UserDAO {
                 return mapRow(rs);
             }
         } catch (SQLException e) {
-            System.err.println("[UserDAO] findById() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -91,7 +90,6 @@ public class UserDAO {
             if (rs.next()) return rs.getString("username");
 
         } catch (SQLException e) {
-            System.err.println("[UserDAO] getUsernameById() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -122,7 +120,6 @@ public class UserDAO {
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException | java.io.UnsupportedEncodingException e) {
-            System.err.println("[UserDAO] sha256() failed.");
             e.printStackTrace();
             return null;
         }

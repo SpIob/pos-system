@@ -98,8 +98,6 @@ public class TransactionDAO {
             return newTransactionId;
 
         } catch (SQLException e) {
-            System.err.println("[TransactionDAO] saveTransaction() failed."
-                             + " Rolling back.");
             e.printStackTrace();
             try { conn.rollback(); }
             catch (SQLException ex) { ex.printStackTrace(); }
@@ -138,7 +136,6 @@ public class TransactionDAO {
                 list.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            System.err.println("[TransactionDAO] getRecentTransactions() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -165,7 +162,6 @@ public class TransactionDAO {
             if (rs.next()) return rs.getDouble(1);
 
         } catch (SQLException e) {
-            System.err.println("[TransactionDAO] getTodayTotal() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -191,7 +187,6 @@ public class TransactionDAO {
             if (rs.next()) return rs.getInt(1);
 
         } catch (SQLException e) {
-            System.err.println("[TransactionDAO] getTodayCount() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
@@ -224,13 +219,129 @@ public class TransactionDAO {
                 items.add(mapItemRow(rs));
             }
         } catch (SQLException e) {
-            System.err.println("[TransactionDAO] getItemsByTransaction() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
         }
 
         return items;
+    }
+    
+    // ---------------------------------------------------------------
+    // Void a transaction — marks it as voided and restores stock
+    // Uses an atomic DB transaction so both changes succeed together
+    // ---------------------------------------------------------------
+    public boolean voidTransaction(int transactionId) {
+        String markVoided =
+            "UPDATE transactions SET status = 'voided' "
+          + "WHERE transaction_id = ? AND status = 'completed'";
+
+        String getItems =
+            "SELECT product_id, quantity FROM transaction_items "
+          + "WHERE transaction_id = ? AND product_id IS NOT NULL";
+
+        String restoreStock =
+            "UPDATE products "
+          + "SET stock_quantity = stock_quantity + ? "
+          + "WHERE product_id = ?";
+
+        Connection conn = DBConnection.getConnection();
+        if (conn == null) return false;
+
+        try {
+            conn.setAutoCommit(false);
+
+            // Step 1: mark transaction as voided
+            try (PreparedStatement stmt =
+                    conn.prepareStatement(markVoided)) {
+                stmt.setInt(1, transactionId);
+                int updated = stmt.executeUpdate();
+                if (updated == 0) {
+                    // Already voided or doesn't exist
+                    conn.rollback();
+                    return false;
+                }
+            }
+
+            // Step 2: restore stock for each product item
+            try (PreparedStatement getStmt =
+                    conn.prepareStatement(getItems)) {
+                getStmt.setInt(1, transactionId);
+                ResultSet rs = getStmt.executeQuery();
+
+                try (PreparedStatement restoreStmt =
+                        conn.prepareStatement(restoreStock)) {
+                    while (rs.next()) {
+                        restoreStmt.setInt(1, rs.getInt("quantity"));
+                        restoreStmt.setInt(2, rs.getInt("product_id"));
+                        restoreStmt.addBatch();
+                    }
+                    restoreStmt.executeBatch();
+                }
+            }
+
+            conn.commit();
+            return true;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            try { conn.rollback(); }
+            catch (SQLException ex) { ex.printStackTrace(); }
+        } finally {
+            try { conn.setAutoCommit(true); }
+            catch (SQLException ex) { ex.printStackTrace(); }
+            DBConnection.closeConnection(conn);
+        }
+        return false;
+    }
+
+    // ---------------------------------------------------------------
+    // Rich rows — now also includes transaction status
+    // Returns: {txnId, date, itemCount, total, username, status}
+    // ---------------------------------------------------------------
+    public java.util.List<Object[]> getRecentTransactionsRich(
+            int limit) {
+        java.util.List<Object[]> rows = new java.util.ArrayList<>();
+
+        String sql =
+            "SELECT t.transaction_id, "
+          + "       t.transaction_date, "
+          + "       COUNT(ti.item_id)  AS item_count, "
+          + "       t.total_amount, "
+          + "       u.username, "
+          + "       t.status "
+          + "FROM transactions t "
+          + "LEFT JOIN transaction_items ti "
+          + "       ON ti.transaction_id = t.transaction_id "
+          + "LEFT JOIN users u "
+          + "       ON u.user_id = t.user_id "
+          + "GROUP BY t.transaction_id, t.transaction_date, "
+          + "         t.total_amount, u.username, t.status "
+          + "ORDER BY t.transaction_date DESC "
+          + "LIMIT ?";
+
+        Connection conn = DBConnection.getConnection();
+        if (conn == null) return rows;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                rows.add(new Object[]{
+                    rs.getInt("transaction_id"),
+                    rs.getTimestamp("transaction_date"),
+                    rs.getInt("item_count"),
+                    rs.getDouble("total_amount"),
+                    rs.getString("username"),
+                    rs.getString("status")   // "completed" or "voided"
+                });
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBConnection.closeConnection(conn);
+        }
+        return rows;
     }
     
     // ---------------------------------------------------------------
@@ -250,66 +361,12 @@ public class TransactionDAO {
             if (rs.next()) return rs.getInt(1);
 
         } catch (SQLException e) {
-            System.err.println("[TransactionDAO] getItemCount() failed.");
             e.printStackTrace();
         } finally {
             DBConnection.closeConnection(conn);
         }
 
         return 0;
-    }
-    
-    // ---------------------------------------------------------------
-    // Rich transaction row — includes item count and cashier username
-    // in a single SQL query. Used by both Dashboard and Reports.
-    // ---------------------------------------------------------------
-    public java.util.List<Object[]> getRecentTransactionsRich(int limit) {
-        java.util.List<Object[]> rows = new java.util.ArrayList<>();
-
-        String sql =
-            "SELECT t.transaction_id, "
-            + "       t.transaction_date, "
-            + "       COUNT(ti.item_id)  AS item_count, "
-            + "       t.total_amount, "
-            + "       u.username "
-            + "FROM transactions t "
-            + "LEFT JOIN transaction_items ti "
-            + "       ON ti.transaction_id = t.transaction_id "
-            + "LEFT JOIN users u "
-            + "       ON u.user_id = t.user_id "
-            + "GROUP BY t.transaction_id, "
-            + "         t.transaction_date, "
-            + "         t.total_amount, "
-            + "         u.username "
-            + "ORDER BY t.transaction_date DESC "
-            + "LIMIT ?";
-
-        Connection conn = DBConnection.getConnection();
-        if (conn == null) return rows;
-
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, limit);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                int    txnId     = rs.getInt("transaction_id");
-                java.sql.Timestamp date = rs.getTimestamp("transaction_date");
-                int    itemCount = rs.getInt("item_count");
-                double total     = rs.getDouble("total_amount");
-                String username  = rs.getString("username");
-
-                rows.add(new Object[]{txnId, date, itemCount,
-                                      total, username});
-            }
-        } catch (SQLException e) {
-            System.err.println(
-                    "[TransactionDAO] getRecentTransactionsRich() failed.");
-            e.printStackTrace();
-        } finally {
-            DBConnection.closeConnection(conn);
-        }
-
-        return rows;
     }
 
     // Map a ResultSet row to a Transaction object
