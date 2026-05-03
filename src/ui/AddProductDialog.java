@@ -28,28 +28,18 @@ import javax.swing.SwingConstants;
 
 public class AddProductDialog extends JDialog {
 
-    // Colors
-    private static final Color NAVY       = new Color(0x1C3557);
-    private static final Color GRAY_TEXT  = new Color(0x666666);
-    private static final Color FIELD_BDR  = new Color(0xCCCCCC);
-    private static final Color GREEN_BTN  = new Color(0x2E7D32);
-    private static final Color GREEN_HOV  = new Color(0x1B5E20);
-    private static final Color GRAY_BTN   = new Color(0xBBBBBB);
-    private static final Color GRAY_HOV   = new Color(0xAAAAAA);
-
     // Components
     private JTextField          nameField;
     private JComboBox<String>   categoryCombo;
     private JTextField          priceField;
     private JSpinner            stockSpinner;
-    private JSpinner            thresholdSpinner;
 
     // If non-null, dialog is in Edit mode
     private final String[] existingValues;
 
     // Callback interface — ProductsPanel listens for Save events
     public interface OnSaveListener {
-        // data[]: {name, category, price, stockQty, threshold}
+        // data[]: {name, category, price, stockQty}
         void onSave(String[] data);
     }
 
@@ -100,7 +90,7 @@ public class AddProductDialog extends JDialog {
                 isEdit ? "Edit Product" : "Add New Product",
                 SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        titleLabel.setForeground(NAVY);
+        titleLabel.setForeground(UIHelper.NAVY);
         gbc.gridy  = 0;
         gbc.insets = new Insets(0, 0, 4, 0);
         content.add(titleLabel, gbc);
@@ -109,7 +99,7 @@ public class AddProductDialog extends JDialog {
         JLabel subtitle = new JLabel("Fill in all fields below.",
                 SwingConstants.CENTER);
         subtitle.setFont(new Font("Arial", Font.ITALIC, 12));
-        subtitle.setForeground(GRAY_TEXT);
+        subtitle.setForeground(UIHelper.GRAY_LABEL);
         gbc.gridy  = 1;
         gbc.insets = new Insets(0, 0, 10, 0);
         content.add(subtitle, gbc);
@@ -159,33 +149,12 @@ public class AddProductDialog extends JDialog {
         gbc.insets = new Insets(0, 0, 14, 0);
         content.add(stockSpinner, gbc);
 
-        // --- Low-Stock Threshold ---
-        content.add(fieldLabel("Low-Stock Threshold"), gridRow(gbc, 11, 0, 4));
-
-        thresholdSpinner = new JSpinner(
-                new SpinnerNumberModel(5, 0, 99999, 1));
-        thresholdSpinner.setFont(new Font("Arial", Font.PLAIN, 13));
-        thresholdSpinner.setPreferredSize(new Dimension(0, 38));
-        gbc.gridy  = 12;
-        gbc.insets = new Insets(0, 0, 4, 0);
-        content.add(thresholdSpinner, gbc);
-
-        JLabel hint = new JLabel(
-                "An alert shows when stock falls below this number.");
-        hint.setFont(new Font("Arial", Font.ITALIC, 11));
-        hint.setForeground(GRAY_TEXT);
-        gbc.gridy  = 13;
-        gbc.insets = new Insets(0, 0, 20, 0);
-        content.add(hint, gbc);
-
         // --- Buttons ---
         JPanel btnRow = new JPanel(new BorderLayout(12, 0));
         btnRow.setOpaque(false);
 
-        JButton saveBtn   = buildRoundedButton("Save",
-                GREEN_BTN, GREEN_HOV, Color.WHITE);
-        JButton cancelBtn = buildRoundedButton("Cancel",
-                GRAY_BTN,  GRAY_HOV,  Color.WHITE);
+        JButton saveBtn   = UIHelper.button("Save", UIHelper.GREEN, UIHelper.GREEN_HOV, Color.WHITE);
+        JButton cancelBtn = UIHelper.button("Cancel", UIHelper.GRAY,  UIHelper.GRAY_HOV,  Color.WHITE);
 
         saveBtn.addMouseListener(new MouseAdapter() {
             @Override
@@ -199,7 +168,7 @@ public class AddProductDialog extends JDialog {
         btnRow.add(saveBtn,   BorderLayout.CENTER);
         btnRow.add(cancelBtn, BorderLayout.EAST);
 
-        gbc.gridy  = 14;
+        gbc.gridy  = 11;
         gbc.insets = new Insets(0, 0, 0, 0);
         content.add(btnRow, gbc);
 
@@ -221,9 +190,8 @@ public class AddProductDialog extends JDialog {
 
         priceField.setText(existingValues[2]);
         priceField.setForeground(new Color(0x333333));
-
         stockSpinner.setValue(Integer.parseInt(existingValues[3]));
-        thresholdSpinner.setValue(Integer.parseInt(existingValues[4]));
+        // threshold field removed
     }
 
     // Save handler
@@ -232,7 +200,6 @@ public class AddProductDialog extends JDialog {
         String price     = priceField.getText().trim();
         String category  = (String) categoryCombo.getSelectedItem();
         int    stock     = (int) stockSpinner.getValue();
-        int    threshold = (int) thresholdSpinner.getValue();
 
         if (name.isEmpty() || name.equals("e.g. Coke 500ml")) {
             javax.swing.JOptionPane.showMessageDialog(this,
@@ -261,8 +228,8 @@ public class AddProductDialog extends JDialog {
                 name,
                 category,
                 price,
-                String.valueOf(stock),
-                String.valueOf(threshold)
+                String.valueOf((int) stockSpinner.getValue())
+                // threshold removed — handled by GlobalSettings
             });
         }
 
@@ -291,7 +258,7 @@ public class AddProductDialog extends JDialog {
         field.setText(placeholder);
         field.setPreferredSize(new Dimension(0, 38));
         field.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(FIELD_BDR, 1),
+            BorderFactory.createLineBorder(UIHelper.FIELD_BORDER, 1),
             BorderFactory.createEmptyBorder(6, 10, 6, 10)
         ));
         field.addFocusListener(new java.awt.event.FocusAdapter() {
@@ -311,41 +278,5 @@ public class AddProductDialog extends JDialog {
             }
         });
         return field;
-    }
-
-    private JButton buildRoundedButton(String text,
-            Color bg, Color hover, Color fg) {
-        JButton btn = new JButton(text) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground());
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-                super.paintComponent(g);
-            }
-        };
-        btn.setFont(new Font("Arial", Font.BOLD, 13));
-        btn.setForeground(fg);
-        btn.setBackground(bg);
-        btn.setOpaque(false);
-        btn.setContentAreaFilled(false);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setPreferredSize(new Dimension(0, 40));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        btn.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                btn.setBackground(hover); btn.repaint();
-            }
-            @Override
-            public void mouseExited(MouseEvent e) {
-                btn.setBackground(bg); btn.repaint();
-            }
-        });
-        return btn;
     }
 }

@@ -1,145 +1,108 @@
 package ui;
 
+import dao.ProductDAO;
+import dao.TransactionDAO;
+import model.Product;
+import model.User;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
+import javax.swing.JFileChooser;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
-import javax.swing.SwingWorker;
-
-import dao.ProductDAO;
-import dao.TransactionDAO;
-import model.Product;
-import model.Transaction;
-import java.text.SimpleDateFormat;
 
 public class ReportsPanel extends JPanel {
-    
+
+    // DAOs
     private final TransactionDAO transactionDAO = new TransactionDAO();
     private final ProductDAO     productDAO     = new ProductDAO();
 
-    // Colors
-    private static final Color PAGE_BG    = new Color(0xF5F5F5);
-    private static final Color CARD_BG    = Color.WHITE;
-    private static final Color NAVY_DARK  = new Color(0x1C3557);
-    private static final Color GREEN_VAL  = new Color(0x2E7D32);
-    private static final Color BLUE_VAL   = new Color(0x1C3557);
-    private static final Color ORANGE_VAL = new Color(0xE65100);
-    private static final Color GRAY_LABEL = new Color(0x777777);
-    private static final Color TXN_BLUE   = new Color(0x2D6DA8);
-    private static final Color ROW_ALT    = new Color(0xF0F4F8);
-    private static final Color ROW_LOW    = new Color(0xFFFDE7);
-    private static final Color OK_GREEN   = new Color(0x2E7D32);
-    private static final Color LOW_AMBER  = new Color(0xE65100);
-    private static final Color EXPORT_BG  = new Color(0xEEEEEE);
-    private static final Color EXPORT_HOV = new Color(0xDDDDDD);
+    // Current user — set from MainFrame
+    private User currentUser;
 
-    // Components
-    private JLabel            todaysSalesValue;
-    private JLabel            totalTxnValue;
-    private JLabel            lowStockValue;
+    // KPI labels
+    private JLabel todaysSalesValue;
+    private JLabel totalTxnValue;
+    private JLabel lowStockValue;
+
+    // Tables
     private DefaultTableModel txnModel;
     private JTable            txnTable;
     private DefaultTableModel inventoryModel;
     private JTable            inventoryTable;
 
+    // Tracks transaction IDs and statuses per row
+    private final java.util.List<Integer> txnIdList     = new java.util.ArrayList<>();
+    private final java.util.List<String>  txnStatusList = new java.util.ArrayList<>();
+
+    // Admin-only controls
+    private JButton exportBtn;
+    private JButton voidBtn;
+
     // Constructor
     public ReportsPanel() {
         setLayout(new BorderLayout());
-        setBackground(PAGE_BG);
+        setBackground(UIHelper.PAGE_BG);
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         buildUI();
-        refreshData();
+    }
+
+    // Set current user — called by MainFrame after login
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+        boolean isAdmin = user != null && user.isAdmin();
+        if (exportBtn != null) exportBtn.setVisible(isAdmin);
+        if (voidBtn   != null) voidBtn.setVisible(isAdmin);
     }
 
     // Build UI
     private void buildUI() {
-        add(buildStatsRow(),     BorderLayout.NORTH);
+        add(buildStatsRow(),      BorderLayout.NORTH);
         add(buildCenterSection(), BorderLayout.CENTER);
     }
 
-    // KPI stat cards
+    // ---------------------------------------------------------------
+    // KPI stat cards — delegate entirely to UIHelper
+    // ---------------------------------------------------------------
     private JPanel buildStatsRow() {
         JPanel row = new JPanel(new GridLayout(1, 3, 16, 0));
         row.setOpaque(false);
         row.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
 
-        JPanel salesCard = buildStatCard("₱0.00", "Today's Sales",
-                GREEN_VAL, new Color(0x2E7D32));
-        todaysSalesValue = getValueLabel(salesCard);
+        JPanel salesCard = UIHelper.statCard("\u20B10.00", "Today's Sales", UIHelper.GREEN, UIHelper.GREEN);
+        todaysSalesValue = UIHelper.getValueLabel(salesCard);
 
-        JPanel txnCard = buildStatCard("0", "Total Transactions",
-                BLUE_VAL, new Color(0x1565C0));
-        totalTxnValue = getValueLabel(txnCard);
+        JPanel txnCard = UIHelper.statCard("0", "Total Transactions", UIHelper.NAVY, UIHelper.BLUE);
+        totalTxnValue = UIHelper.getValueLabel(txnCard);
 
-        JPanel lowCard = buildStatCard("0 ⚠", "Low Stock Items",
-                ORANGE_VAL, new Color(0xFF8F00));
-        lowStockValue = getValueLabel(lowCard);
+        JPanel lowCard = UIHelper.statCard("0 ⚠", "Low Stock Items", UIHelper.AMBER_TXT, new Color(0xFF8F00));
+        lowStockValue = UIHelper.getValueLabel(lowCard);
+        
+        todaysSalesValue.setFont(new Font("Dialog", Font.BOLD, 26));
+        totalTxnValue.setFont(   new Font("Dialog", Font.BOLD, 26));
+        lowStockValue.setFont(   new Font("Dialog", Font.BOLD, 26));
 
         row.add(salesCard);
         row.add(txnCard);
         row.add(lowCard);
         return row;
-    }
-
-    private JPanel buildStatCard(String value, String labelText,
-                                  Color valueColor, Color accentColor) {
-        JPanel card = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(CARD_BG);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-            }
-        };
-        card.setOpaque(false);
-        card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 4, 0, 0, accentColor),
-            BorderFactory.createEmptyBorder(16, 16, 16, 16)
-        ));
-
-        JLabel valLabel = new JLabel(value);
-        valLabel.setFont(new Font("Arial", Font.BOLD, 26));
-        valLabel.setForeground(valueColor);
-
-        JLabel descLabel = new JLabel(labelText);
-        descLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        descLabel.setForeground(GRAY_LABEL);
-
-        JPanel stack = new JPanel(new BorderLayout(0, 4));
-        stack.setOpaque(false);
-        stack.add(valLabel,  BorderLayout.NORTH);
-        stack.add(descLabel, BorderLayout.SOUTH);
-        card.add(stack, BorderLayout.CENTER);
-        return card;
-    }
-
-    private JLabel getValueLabel(JPanel card) {
-        JPanel stack = (JPanel) card.getComponent(0);
-        return (JLabel) stack.getComponent(0);
     }
 
     // Center section
@@ -151,24 +114,14 @@ public class ReportsPanel extends JPanel {
         return center;
     }
 
-    // Transactions panel + Export button
+    // ---------------------------------------------------------------
+    // Transactions panel
+    // ---------------------------------------------------------------
     private JPanel buildTransactionsPanel() {
-        JPanel panel = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(CARD_BG);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-            }
-        };
-        panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JPanel panel = UIHelper.card(new BorderLayout(), 20);
 
-        // Title row with Export button
-        JPanel titleRow = new JPanel(new BorderLayout());
+        // Title row
+        JPanel titleRow = new JPanel(new BorderLayout(8, 0));
         titleRow.setOpaque(false);
         titleRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
 
@@ -176,71 +129,83 @@ public class ReportsPanel extends JPanel {
         title.setFont(new Font("Arial", Font.BOLD, 14));
         title.setForeground(new Color(0x222222));
 
-        JButton exportBtn = new JButton("⬇  Export") {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground());
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
-                g2.setColor(new Color(0xBBBBBB));
-                g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 6, 6);
-                super.paintComponent(g);
-            }
-        };
-        exportBtn.setFont(new Font("Arial", Font.PLAIN, 12));
-        exportBtn.setForeground(new Color(0x333333));
-        exportBtn.setBackground(EXPORT_BG);
-        exportBtn.setOpaque(false);
-        exportBtn.setContentAreaFilled(false);
-        exportBtn.setBorderPainted(false);
-        exportBtn.setFocusPainted(false);
-        exportBtn.setPreferredSize(new Dimension(90, 30));
-        exportBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        exportBtn.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                exportBtn.setBackground(EXPORT_HOV); exportBtn.repaint();
-            }
-            @Override
-            public void mouseExited(MouseEvent e) {
-                exportBtn.setBackground(EXPORT_BG); exportBtn.repaint();
-            }
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                exportToCSV();
+        // Admin-only buttons
+        JPanel adminBtns = new JPanel(
+                new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 0));
+        adminBtns.setOpaque(false);
+
+        voidBtn   = UIHelper.button("Void",   UIHelper.VOID_RED, UIHelper.VOID_HOV,   Color.WHITE);
+        voidBtn.setEnabled(false);
+        voidBtn.setVisible(false);
+        voidBtn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                if (voidBtn.isEnabled()) handleVoidTransaction();
             }
         });
 
+        exportBtn = UIHelper.button("Export", UIHelper.EXPORT_BG, UIHelper.EXPORT_HOV, new Color(0x333333));
+        exportBtn.setVisible(false);
+        exportBtn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { exportToCSV(); }
+        });
+
+        adminBtns.add(voidBtn);
+        adminBtns.add(exportBtn);
+
         titleRow.add(title,     BorderLayout.WEST);
-        titleRow.add(exportBtn, BorderLayout.EAST);
+        titleRow.add(adminBtns, BorderLayout.EAST);
 
         // Table
-        String[] cols = {"TXN #","Date & Time","Items","Total","Cashier"};
+        String[] cols = {"TXN #", "Date & Time", "Items", "Total", "Cashier", "Status"};
         txnModel = new DefaultTableModel(cols, 0) {
-            @Override
-            public boolean isCellEditable(int r, int c) { return false; }
+            @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         txnTable = new JTable(txnModel);
-        styleTable(txnTable);
+        UIHelper.styleTable(txnTable);
 
-        // TXN # blue
-        txnTable.getColumnModel().getColumn(0)
-                .setCellRenderer(new DefaultTableCellRenderer() {
+        // Enable void button only for selected completed rows
+        txnTable.getSelectionModel().addListSelectionListener(e -> {
+            int sel = txnTable.getSelectedRow();
+            if (sel >= 0 && currentUser != null && currentUser.isAdmin()) {
+                String status = txnStatusList.size() > sel
+                        ? txnStatusList.get(sel) : "completed";
+                voidBtn.setEnabled("completed".equals(status));
+            } else {
+                voidBtn.setEnabled(false);
+            }
+        });
+
+        // Row renderer: voided rows get pink tint
+        txnTable.setDefaultRenderer(Object.class,
+                new DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(
-                    JTable t, Object val, boolean sel,
-                    boolean focus, int row, int col) {
-                super.getTableCellRendererComponent(
-                        t, val, sel, focus, row, col);
-                setForeground(sel ? Color.WHITE : TXN_BLUE);
-                setBackground(sel ? NAVY_DARK :
-                              (row % 2 == 0 ? Color.WHITE : ROW_ALT));
+                    JTable t, Object v, boolean sel,
+                    boolean foc, int row, int col) {
+                super.getTableCellRendererComponent(t, v, sel, foc, row, col);
+                String status = row < txnStatusList.size()
+                        ? txnStatusList.get(row) : "completed";
+                boolean isVoided = "voided".equals(status);
+
+                if (sel) {
+                    setBackground(UIHelper.NAVY);
+                    setForeground(Color.WHITE);
+                } else if (isVoided) {
+                    setBackground(UIHelper.ROW_VOID);
+                    setForeground(new Color(0x999999));
+                } else {
+                    setBackground(row % 2 == 0 ? Color.WHITE : UIHelper.ROW_ALT);
+                    setForeground(col == 0 ? UIHelper.TXN_BLUE : new Color(0x333333));
+                }
                 setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+                setFont(UIHelper.FONT_PLAIN_MD);
                 return this;
             }
         });
+
+        // Status column renderer — reuse UIHelper's statusRenderer
+        txnTable.getColumnModel().getColumn(5)
+                .setCellRenderer(UIHelper.statusRenderer("Completed", "Voided"));
 
         JScrollPane scroll = new JScrollPane(txnTable);
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -251,22 +216,12 @@ public class ReportsPanel extends JPanel {
         return panel;
     }
 
-    // Inventory status panel
+    // ---------------------------------------------------------------
+    // Inventory panel
+    // ---------------------------------------------------------------
     private JPanel buildInventoryPanel() {
-        JPanel panel = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(CARD_BG);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-            }
-        };
-        panel.setOpaque(false);
+        JPanel panel = UIHelper.card(new BorderLayout(), 20);
         panel.setPreferredSize(new Dimension(440, 0));
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel title = new JLabel("Inventory Status");
         title.setFont(new Font("Arial", Font.BOLD, 14));
@@ -276,57 +231,32 @@ public class ReportsPanel extends JPanel {
 
         String[] cols = {"Product", "Stock", "Status"};
         inventoryModel = new DefaultTableModel(cols, 0) {
-            @Override
-            public boolean isCellEditable(int r, int c) { return false; }
+            @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         inventoryTable = new JTable(inventoryModel);
-        styleTable(inventoryTable);
+        UIHelper.styleTable(inventoryTable);
 
-        // Status column colored renderer
+        // Status column — LOW vs OK via UIHelper renderer
         inventoryTable.getColumnModel().getColumn(2)
-                .setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public java.awt.Component getTableCellRendererComponent(
-                    JTable t, Object val, boolean sel,
-                    boolean focus, int row, int col) {
-                super.getTableCellRendererComponent(
-                        t, val, sel, focus, row, col);
-                String s = val == null ? "" : val.toString();
-                if (sel) {
-                    setBackground(NAVY_DARK);
-                    setForeground(Color.WHITE);
-                } else if (s.equals("LOW")) {
-                    setBackground(ROW_LOW);
-                    setForeground(LOW_AMBER);
-                    setText("⚠ LOW");
-                } else {
-                    setBackground(row % 2 == 0 ? Color.WHITE : ROW_ALT);
-                    setForeground(OK_GREEN);
-                    setText("✔ OK");
-                }
-                setFont(new Font("Arial", Font.BOLD, 12));
-                setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
-                return this;
-            }
-        });
+                .setCellRenderer(UIHelper.statusRenderer("✔ OK", "⚠ LOW"));
 
-        // LOW rows get amber row tint
+        // Row renderer: amber tint for LOW rows
         inventoryTable.setDefaultRenderer(Object.class,
                 new DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(
-                    JTable t, Object val, boolean sel,
-                    boolean focus, int row, int col) {
-                super.getTableCellRendererComponent(
-                        t, val, sel, focus, row, col);
+                    JTable t, Object v, boolean sel,
+                    boolean foc, int row, int col) {
+                super.getTableCellRendererComponent(t, v, sel, foc, row, col);
                 if (sel) {
-                    setBackground(NAVY_DARK);
+                    setBackground(UIHelper.NAVY);
                     setForeground(Color.WHITE);
                 } else {
                     String status = inventoryModel
                             .getValueAt(row, 2).toString();
-                    setBackground(status.equals("LOW") ? ROW_LOW :
-                                  (row % 2 == 0 ? Color.WHITE : ROW_ALT));
+                    setBackground("LOW".equals(status)
+                            ? UIHelper.ROW_LOW
+                            : (row % 2 == 0 ? Color.WHITE : UIHelper.ROW_ALT));
                     setForeground(new Color(0x333333));
                 }
                 setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
@@ -338,55 +268,15 @@ public class ReportsPanel extends JPanel {
         JScrollPane scroll = new JScrollPane(inventoryTable);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(Color.WHITE);
-
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
     }
 
-    // Shared table styling
-    private void styleTable(JTable table) {
-        JTableHeader header = table.getTableHeader();
-        header.setBackground(NAVY_DARK);
-        header.setForeground(Color.WHITE);
-        header.setFont(new Font("Arial", Font.BOLD, 13));
-        header.setPreferredSize(new Dimension(0, 38));
-        header.setReorderingAllowed(false);
-
-        table.setFont(new Font("Arial", Font.PLAIN, 13));
-        table.setRowHeight(36);
-        table.setShowGrid(false);
-        table.setIntercellSpacing(new Dimension(0, 0));
-        table.setSelectionBackground(NAVY_DARK);
-        table.setSelectionForeground(Color.WHITE);
-        table.setFillsViewportHeight(true);
-        table.setFocusable(false);
-
-        table.setDefaultRenderer(Object.class,
-                new DefaultTableCellRenderer() {
-            @Override
-            public java.awt.Component getTableCellRendererComponent(
-                    JTable t, Object val, boolean sel,
-                    boolean focus, int row, int col) {
-                super.getTableCellRendererComponent(
-                        t, val, sel, focus, row, col);
-                if (sel) {
-                    setBackground(NAVY_DARK);
-                    setForeground(Color.WHITE);
-                } else {
-                    setBackground(row % 2 == 0 ? Color.WHITE : ROW_ALT);
-                    setForeground(new Color(0x333333));
-                }
-                setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
-                setFont(new Font("Arial", Font.PLAIN, 13));
-                return this;
-            }
-        });
-    }
-
-    // Load and refresh  data
+    // ---------------------------------------------------------------
+    // refreshData() — loads all live data
+    // ---------------------------------------------------------------
     public void refreshData() {
         new SwingWorker<Void, Void>() {
-
             double todayTotal;
             int    todayCount;
             int    lowStockCount;
@@ -398,98 +288,148 @@ public class ReportsPanel extends JPanel {
                 todayTotal    = transactionDAO.getTodayTotal();
                 todayCount    = transactionDAO.getTodayCount();
                 lowStockCount = productDAO.getLowStockCount();
-                richRows      = transactionDAO.getRecentTransactionsRich(5);
+                richRows      = transactionDAO.getRecentTransactionsRich(20);
                 allProducts   = productDAO.getAllProducts();
                 return null;
             }
 
             @Override
             protected void done() {
-                SimpleDateFormat fmt =
-                        new SimpleDateFormat("MMM d hh:mm a");
+                SimpleDateFormat fmt = new SimpleDateFormat("MMM d hh:mm a");
 
-                // ---- KPI cards ----
-                todaysSalesValue.setText(
-                        String.format("₱%,.2f", todayTotal));
+                todaysSalesValue.setText(String.format("\u20B1%,.2f", todayTotal));
                 totalTxnValue.setText(String.valueOf(todayCount));
-                lowStockValue.setText(
-                        lowStockCount > 0 ? lowStockCount + " ⚠" : "0");
+                lowStockValue.setText(lowStockCount > 0 ? lowStockCount + " ⚠" : "0");
 
-                // ---- Transactions table ----
                 txnModel.setRowCount(0);
+                txnIdList.clear();
+                txnStatusList.clear();
+
                 for (Object[] row : richRows) {
                     int    txnId     = (int)    row[0];
-                    java.sql.Timestamp date =
-                            (java.sql.Timestamp) row[1];
+                    java.sql.Timestamp date = (java.sql.Timestamp) row[1];
                     int    itemCount = (int)    row[2];
                     double total     = (double) row[3];
                     String username  = (String) row[4];
+                    String status    = (String) row[5];
 
-                    String itemLabel = itemCount == 1
-                            ? "1 item" : itemCount + " items";
+                    String itemLabel = itemCount == 1 ? "1 item" : itemCount + " items";
+                    txnIdList.add(txnId);
+                    txnStatusList.add(status != null ? status : "completed");
 
                     txnModel.addRow(new Object[]{
                         String.format("TXN-%04d", txnId),
                         fmt.format(date),
                         itemLabel,
-                        String.format("₱%,.2f", total),
-                        username != null ? username : "—"
+                        String.format("\u20B1%,.2f", total),
+                        username != null ? username : "—",
+                        status != null ? status : "completed"
                     });
                 }
 
-                // ---- Inventory table ----
                 inventoryModel.setRowCount(0);
                 for (Product p : allProducts) {
                     inventoryModel.addRow(new Object[]{
                         p.getProductName(),
                         p.getStockQuantity(),
-                        p.getStockStatus()
+                        p.isLowStock() ? "LOW" : "OK"
                     });
                 }
             }
         }.execute();
     }
 
-    // Export to CSV
-    private void exportToCSV() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setSelectedFile(
-                new java.io.File("transactions_export.csv"));
-        int result = chooser.showSaveDialog(this);
-        if (result != JFileChooser.APPROVE_OPTION) return;
+    // ---------------------------------------------------------------
+    // Void transaction handler (admin only)
+    // ---------------------------------------------------------------
+    private void handleVoidTransaction() {
+        int viewRow = txnTable.getSelectedRow();
+        if (viewRow < 0 || viewRow >= txnIdList.size()) return;
 
-        try (FileWriter fw = new FileWriter(chooser.getSelectedFile())) {
-            // Header
-            fw.write("TXN #,Date & Time,Items,Total,Cashier\n");
-            // Rows
-            for (int i = 0; i < txnModel.getRowCount(); i++) {
-                for (int j = 0; j < txnModel.getColumnCount(); j++) {
-                    fw.write(txnModel.getValueAt(i, j).toString());
-                    if (j < txnModel.getColumnCount() - 1) fw.write(",");
-                }
-                fw.write("\n");
+        int    txnId  = txnIdList.get(viewRow);
+        String txnNum = String.format("TXN-%04d", txnId);
+
+        if (currentUser == null) return;
+        PasswordConfirmDialog pwd = new PasswordConfirmDialog(
+                null, currentUser, "Void " + txnNum);
+        pwd.setVisible(true);
+        if (!pwd.isConfirmed()) return;
+
+        int choice = JOptionPane.showConfirmDialog(this,
+            "Void " + txnNum + "?\n\n"
+            + "Stock quantities will be restored.\n"
+            + "This action cannot be undone.",
+            "Confirm Void Transaction",
+            JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (choice != JOptionPane.YES_OPTION) return;
+
+        new SwingWorker<Boolean, Void>() {
+            @Override protected Boolean doInBackground() {
+                return transactionDAO.voidTransaction(txnId);
             }
-            JOptionPane.showMessageDialog(this,
-                "Exported successfully.",
-                "Export Complete",
-                JOptionPane.INFORMATION_MESSAGE);
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this,
-                "Export failed: " + ex.getMessage(),
-                "Export Error",
-                JOptionPane.ERROR_MESSAGE);
-        }
+
+            @Override protected void done() {
+                try {
+                    if (get()) {
+                        JOptionPane.showMessageDialog(ReportsPanel.this,
+                            txnNum + " has been voided.\nStock has been restored.",
+                            "Void Successful", JOptionPane.INFORMATION_MESSAGE);
+                        refreshData();
+                    } else {
+                        JOptionPane.showMessageDialog(ReportsPanel.this,
+                            "Could not void this transaction.\nIt may already be voided.",
+                            "Void Failed", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
     }
 
-    // Main testing code
-    public static void main(String[] args) {
-        java.awt.EventQueue.invokeLater(() -> {
-            javax.swing.JFrame f = new javax.swing.JFrame("Reports Test");
-            f.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE);
-            f.setSize(1280, 720);
-            f.setLocationRelativeTo(null);
-            f.add(new ReportsPanel());
-            f.setVisible(true);
-        });
+    // ---------------------------------------------------------------
+    // Export to CSV
+    // ---------------------------------------------------------------
+    private void exportToCSV() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new java.io.File("transactions_export.csv"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        java.io.File file = chooser.getSelectedFile();
+
+        new SwingWorker<Void, Void>() {
+            java.util.List<Object[]> rows;
+
+            @Override
+            protected Void doInBackground() {
+                rows = transactionDAO.getRecentTransactionsRich(Integer.MAX_VALUE);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                try (FileWriter fw = new FileWriter(file)) {
+                    fw.write("TXN #,Date & Time,Items,Total,Cashier,Status\n");
+                    for (Object[] row : rows) {
+                        int    txnId  = (int)    row[0];
+                        java.sql.Timestamp date = (java.sql.Timestamp) row[1];
+                        int    items  = (int)    row[2];
+                        double total  = (double) row[3];
+                        String user   = (String) row[4];
+                        String status = (String) row[5];
+                        fw.write(String.format("TXN-%04d,%s,%d,%.2f,%s,%s\n",
+                            txnId, fmt.format(date), items, total,
+                            user   != null ? user   : "",
+                            status != null ? status : "completed"));
+                    }
+                    JOptionPane.showMessageDialog(ReportsPanel.this,
+                        "Exported successfully to:\n" + file.getAbsolutePath(),
+                        "Export Complete", JOptionPane.INFORMATION_MESSAGE);
+                } catch (IOException ex) {
+                    JOptionPane.showMessageDialog(ReportsPanel.this,
+                        "Export failed: " + ex.getMessage(),
+                        "Export Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 }

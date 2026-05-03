@@ -62,7 +62,14 @@ public class MainFrame extends JFrame {
         setMinimumSize(new Dimension(1280, 720));
         setResizable(false);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                database.DBConnection.shutdown();
+                System.exit(0);
+            }
+        });
 
         buildUI();
     }
@@ -73,11 +80,6 @@ public class MainFrame extends JFrame {
 
         buildTopBar();
         buildTabbedPane();
-
-        // Apply role-based access (cashiers cannot see Reports)
-        if (!currentUser.isAdmin()) {
-            mainTabbedPane.setEnabledAt(4, false);
-        }
     }
 
     // Top navbar
@@ -133,7 +135,7 @@ public class MainFrame extends JFrame {
         rightPanel.setOpaque(false);
 
         loggedUserLabel = new JLabel(currentUser.getUsername());
-        loggedUserLabel.setFont(new Font("Arial", Font.PLAIN, 13));
+        loggedUserLabel.setFont(new Font("Dialog", Font.PLAIN, 13));
         loggedUserLabel.setForeground(Color.WHITE);
 
         // Role badge (rounded pill)
@@ -155,7 +157,7 @@ public class MainFrame extends JFrame {
         roleBadgeLabel.setBorder(BorderFactory.createEmptyBorder(3, 10, 3, 10));
 
         // Logout button
-        logoutButton = new JButton("⏻  Logout") {
+        logoutButton = new JButton("Logout") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g;
@@ -246,8 +248,8 @@ public class MainFrame extends JFrame {
         mainTabbedPane.addTab("Dashboard", dashboardPanel);  // index 0
         mainTabbedPane.addTab("Stations",  stationsPanel);   // index 1
         mainTabbedPane.addTab("Sales",     salesPanel);      // index 2
-        mainTabbedPane.addTab("Products ⚠", productsPanel); // index 3
-        mainTabbedPane.addTab("Reports ⚠",  reportsPanel);  // index 4
+        mainTabbedPane.addTab("Products", productsPanel); // index 3
+        mainTabbedPane.addTab("Reports",  reportsPanel);  // index 4
         
         // Refresh data every time a tab becomes visible
         mainTabbedPane.addChangeListener(e -> {
@@ -274,6 +276,8 @@ public class MainFrame extends JFrame {
         });
 
         // Also pass the current user down to other panels
+        productsPanel.setCurrentUser(currentUser);
+        reportsPanel.setCurrentUser(currentUser);
         salesPanel.setCurrentUser(currentUser);
         stationsPanel.setCurrentUser(currentUser);
 
@@ -342,7 +346,7 @@ public class MainFrame extends JFrame {
         new Thread(() -> {
             int count = new dao.ProductDAO().getLowStockCount();
             java.awt.EventQueue.invokeLater(() -> {
-                String badge = count > 0 ? " ⚠" : "";
+                String badge = count > 0 ? " (!)" : "";
                 mainTabbedPane.setTitleAt(3, "Products" + badge);
                 mainTabbedPane.setTitleAt(4, "Reports"  + badge);
             });
