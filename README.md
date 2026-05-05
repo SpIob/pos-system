@@ -1,188 +1,359 @@
-# Internet Café / Gaming Shop — POS System
+# ☕ ByteZone Café POS System
 
-A Point-of-Sale system for an internet café built with **Java (Apache NetBeans)**, **MySQL on Railway**, and **GitHub** for team collaboration.
+> A Point of Sale system for an internet café and gaming shop — built with Java Swing, MySQL on Railway, and a clean layered architecture.
 
----
-
-## Before You Start
-
-Read this entire file top to bottom before touching anything. Every step depends on the one before it
-
----
-
-## Part 1 — Install Required Software
-
-Install everything below. All of it is free.
-
-### 1.1 Apache NetBeans IDE
-- Download: https://netbeans.apache.org/front/main/download/
-- Get **NetBeans 21** (or the latest LTS version)
-- During install, make sure **Java/JDK support** is checked
-- If it offers to install a JDK alongside NetBeans, allow it
-- Minimum JDK version required: **JDK 17**
-
-### 1.2 Java JDK (only if not bundled with NetBeans)
-- Download: https://adoptium.net/
-- Get **Temurin JDK 17 (LTS)** for your operating system
-- During install, make sure **Set JAVA_HOME** is checked
-- Verify after install — open Command Prompt or Terminal and run:
-  ```
-  java -version
-  ```
-  You should see something like `java version "17.x.x"`
-
-### 1.3 MySQL Connector/J (JDBC Driver)
-- Download: https://dev.mysql.com/downloads/connector/j/
-- Choose **Platform Independent** and download the ZIP
-- Extract the ZIP — you will find a file named `mysql-connector-j-X.X.X.jar`
-- Save it somewhere easy to find (Desktop or Downloads). You will add it to NetBeans in Part 3.
-
-### 1.4 Git
-- Download: https://git-scm.com/downloads
-- During install (Windows): choose **"Use Git from the Windows Command Prompt"**
-- Verify after install:
-  ```
-  git --version
-  ```
-
-### 1.5 Configure Git with Your Identity (required before any commit)
-Run these two commands once in your terminal, using your own name and email:
-```
-git config --global user.email "youremail@gmail.com"
-git config --global user.name "Your Name"
-```
-Without this, Git will refuse to let you commit anything.
-
-### 1.6 GitHub Desktop (recommended for beginners)
-- Download: https://desktop.github.com/
-- Gives you a visual interface for Git so you don't have to use the terminal for most tasks
+![Java](https://img.shields.io/badge/Java-17%2B-orange?logo=java)
+![MySQL](https://img.shields.io/badge/Database-MySQL-blue?logo=mysql)
+![Railway](https://img.shields.io/badge/Hosted%20on-Railway-purple?logo=railway)
+![NetBeans](https://img.shields.io/badge/IDE-Apache%20NetBeans-green)
+![Status](https://img.shields.io/badge/Status-In%20Development-yellow)
 
 ---
 
-## Part 2 — Create a GitHub Account
+## Table of Contents
 
-- Sign up at https://github.com/ if you don't have an account
-- Use your school email if possible — GitHub gives students free Pro features
-- **Send your GitHub username to the team leader** so you can be added to this repository
-
----
-
-## Part 3 — Clone and Open the Project
-
-### 3.1 Accept the Repository Invitation
-Check your email for an invite from GitHub. Accept it before trying to clone.
-
-### 3.2 Clone the Repository
-Open GitHub Desktop:
-1. Click **File → Clone Repository**
-2. Search for `pos-system` or paste the URL: `https://github.com/SpIob/pos-system`
-3. Choose a local folder (e.g. `C:\Projects\` on Windows)
-4. Click **Clone**
-
-### 3.3 Open the Project in NetBeans
-1. Open Apache NetBeans
-2. Click **File → Open Project**
-3. Navigate to the folder where you cloned the repo
-4. Select the project folder and click **Open**
-5. If you see red error marks, continue to step 3.4 — this is expected
-
-### 3.4 Add the MySQL JDBC Driver
-This is required or the project will not connect to the database.
-
-1. In the NetBeans **Projects** panel on the left, find your project
-2. Right-click **Libraries → Add JAR/Folder**
-3. Navigate to the `mysql-connector-j-X.X.X.jar` file you downloaded in step 1.3
-4. Select it and click **Open**
-5. The red error marks should disappear
+1. [Project Overview](#1-project-overview)
+2. [Innovative Features](#2-innovative-features)
+3. [Technical Layout](#3-technical-layout)
+4. [Database Design](#4-database-design)
+5. [System Flowchart](#5-system-flowchart)
+6. [Getting Started](#6-getting-started)
+7. [Project Structure](#7-project-structure)
+8. [Coding Standards](#8-coding-standards)
+9. [Git Workflow](#9-git-workflow)
+10. [Team Roles](#10-team-roles)
+11. [Deliverables Checklist](#11-deliverables-checklist)
 
 ---
 
-## Part 4 — Set Up the Database Credentials
+## 1. Project Overview
 
-The database credentials are **not included in this repository** for security reasons. You must create the config file manually.
+**ByteZone Café POS** is a desktop Point of Sale application designed for an internet café and gaming shop. The system handles two core revenue streams simultaneously:
 
-### 4.1 Create the config folder
-Inside the NetBeans project, right-click the `src` folder → **New → Folder** → name it `config`
+- **PC Station Billing** — time-based billing for Regular (₱20/hr) and VIP (₱40/hr) stations
+- **Product Sales** — snacks, beverages, and peripheral rentals (headsets, USB drives)
 
-### 4.2 Create config.properties
-Inside the `config` folder you just created, create a new file named exactly:
+Two staff roles are supported:
+
+| Role | Access Level |
+|------|-------------|
+| Admin | Full access: products, reports, user management, sales history |
+| Cashier | Sales transactions, session management, receipt generation |
+
+### Why MySQL?
+
+MySQL was chosen over SQLite for the following reasons:
+
+- **Concurrent access** — multiple cashier terminals can connect to a single shared database without file-locking issues, unlike SQLite.
+- **Railway hosting** — the team can share one live database during development without each member running a local MySQL server.
+- **Production readiness** — the schema can migrate directly to any production MySQL host with zero changes.
+- **ENUM and FK support** — MySQL enforces data integrity (roles, station types, session statuses) at the database level, reducing defensive code in Java.
+
+---
+
+## 2. Innovative Features
+
+Beyond the minimum POS requirements, ByteZone includes the following innovations:
+
+### 🖥️ Dual Billing Mode
+The system handles station time billing and product sales **in the same transaction**. A customer ending a gaming session can have snacks added to their bill and pay everything in one receipt.
+
+### 📊 Admin Analytics Dashboard
+- Daily and weekly revenue summaries
+- Top-selling products
+- Peak-hour station occupancy chart (hour-by-hour bar chart using Java2D)
+- Low-stock alerts displayed on the dashboard home screen
+
+### ⚠️ Inventory Alert System
+Products with `stock_quantity` at or below `low_stock_threshold` are flagged automatically. The cashier UI shows a warning badge; the admin dashboard shows a full low-stock report.
+
+### 🧾 Itemized Receipt Generation
+Receipts are generated as formatted text output (printable via `javax.print`) with:
+- Line-by-line product breakdown
+- PC session duration and charge
+- Amount paid and change given
+- Timestamp and transaction ID
+
+### 🔐 Role-Based Access Control (RBAC)
+Login determines which screens are accessible. Cashiers cannot access product management or sales reports. All UI navigation is gated by the authenticated user's role stored in the session.
+
+### 🕒 Live Station Status Board
+The main cashier screen shows a real-time grid of all stations — color-coded by status (green = available, red = occupied, grey = maintenance) with elapsed time displayed for active sessions.
+
+---
+
+## 3. Technical Layout
+
+### Architecture Overview
+
+The application follows a **four-layer architecture** that separates concerns cleanly:
+
 ```
-config.properties
+┌─────────────────────────────────────────┐
+│              UI Layer (ui/)             │  ← Java Swing JFrames, JPanels
+│   LoginFrame, DashboardFrame, POSPanel  │
+├─────────────────────────────────────────┤
+│           DAO Layer (dao/)              │  ← Data Access Objects
+│   UserDAO, ProductDAO, SessionDAO, etc. │
+├─────────────────────────────────────────┤
+│          Model Layer (model/)           │  ← Plain Java Objects (POJOs)
+│   User, Product, Station, Transaction   │
+├─────────────────────────────────────────┤
+│        Database Layer (database/)       │  ← JDBC Connection Management
+│   DBConnection (loads config.properties)│
+└─────────────────────────────────────────┘
+                     │
+                     ▼
+         MySQL Database on Railway
 ```
 
-### 4.3 Paste the credentials
-Ask the team leader for the credentials and paste them into `config.properties` in this format:
+### Components
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| GUI Framework | Java Swing | All screen rendering and user interaction |
+| IDE | Apache NetBeans 21 | Project management, build, run |
+| Language | Java 17 (LTS) | Application logic |
+| Database | MySQL 8 via Railway | Persistent storage |
+| JDBC Driver | MySQL Connector/J | Java ↔ MySQL communication |
+| Config | `config.properties` | Credential management (not in Git) |
+| Version Control | GitHub (feature branches) | Collaborative development |
+| Design | Figma, Canva | UI wireframes and mockups |
+
+### Tools and Technologies
+
 ```
-db.host=YOUR_RAILWAY_HOST
-db.port=3306
+Java 17+                 — Core language
+Apache NetBeans 21       — IDE and build tool
+MySQL 8 (Railway)        — Cloud-hosted relational database
+MySQL Connector/J JAR    — JDBC driver (added to NetBeans Libraries)
+GitHub                   — Version control and PR review
+GitHub Desktop           — GUI Git client for teammates
+Railway                  — MySQL hosting (public proxy for local dev)
+Figma / Canva            — UI design and wireframes
+Python + PIL             — Annotated wireframe PNG generation
+```
+
+---
+
+## 4. Database Design
+
+The database is named `cafe_pos_db` and consists of six tables.
+
+### Entity Relationship Summary
+
+```
+users ──────────────────────┐
+  │                         │
+  │ (manages sessions)       │ (processes transactions)
+  ▼                         ▼
+sessions ◄──── stations    transactions ◄──── transaction_items
+                                                     │
+                                              references products
+```
+
+### Tables
+
+| Table | Description |
+|-------|-------------|
+| `users` | Staff accounts with role (`admin` / `cashier`) |
+| `stations` | PC stations with type (`regular` / `vip`), hourly rate, and availability status |
+| `sessions` | Active and completed PC usage sessions, linked to a station and the cashier who opened it |
+| `products` | Café inventory (snacks, beverages, other) with price, stock, and low-stock threshold |
+| `transactions` | Payment records linked to an optional session; stores amount paid and change given |
+| `transaction_items` | Line items for each transaction — either a product or a PC session charge |
+
+### Key Schema Decisions
+
+- `sessions.user_id` references the **cashier** who opened the session, not the customer (the system has no customer accounts).
+- `transaction_items.product_id` is nullable — PC session charges are inserted as description-only items (e.g., "PC-01 — 2h 30m").
+- `transactions.session_id` is nullable — product-only sales (walk-in snack purchase) have no associated session.
+- Passwords are stored using `SHA2(..., 256)`. In production, upgrade to bcrypt via a Java library.
+
+### Setting Up the Database
+
+Run `db-schema.sql` once against your Railway MySQL instance to create all tables and seed sample data:
+
+```sql
+-- In MySQL Workbench or any MySQL client connected to Railway:
+SOURCE /path/to/db-schema.sql;
+```
+
+Or paste the file contents directly into the Railway MySQL console.
+
+---
+
+## 5. System Flowchart
+
+### Login Flow
+
+```
+Start
+  │
+  ▼
+Show Login Screen
+  │
+  ▼
+User enters username + password
+  │
+  ▼
+Query users table (SHA2 hash match)
+  ├── No match ──► Show "Invalid credentials" ──► Back to Login
+  │
+  └── Match ──► Load role from DB
+                    │
+                    ├── role = 'admin' ──► Admin Dashboard
+                    └── role = 'cashier' ──► Cashier Dashboard
+```
+
+### Sales Transaction Flow
+
+```
+Cashier Dashboard
+  │
+  ├─── [New PC Session] ──────────────────────────────┐
+  │        │                                          │
+  │        ▼                                          │
+  │    Select available station                       │
+  │        │                                          │
+  │        ▼                                          │
+  │    Insert session record (status = 'active')      │
+  │        │                                          │
+  │        ▼                                          │
+  │    Station turns RED on status board              │
+  │                                                   │
+  ├─── [End Session / Checkout] ◄─────────────────────┘
+  │        │
+  │        ▼
+  │    Calculate duration → session_charge
+  │        │
+  │        ▼
+  │    Optionally add products to cart
+  │        │
+  │        ▼
+  │    Show total → cashier enters amount paid
+  │        │
+  │        ▼
+  │    INSERT transaction + transaction_items
+  │        │
+  │        ▼
+  │    UPDATE session status = 'completed'
+  │        │
+  │        ▼
+  │    UPDATE station status = 'available'
+  │        │
+  │        ▼
+  │    Print / display receipt
+  │
+  └─── [Product-only Sale]
+           │
+           ▼
+       Add products to cart
+           │
+           ▼
+       Enter amount paid → compute change
+           │
+           ▼
+       INSERT transaction + transaction_items (no session)
+           │
+           ▼
+       Deduct stock_quantity for each product
+           │
+           ▼
+       Display receipt
+```
+
+### Admin: Product Management Flow
+
+```
+Admin Dashboard → Product Management
+  │
+  ├── [Add Product] → Enter name, category, price, qty, threshold → INSERT
+  ├── [Edit Product] → Select product → Modify fields → UPDATE
+  └── [Delete Product] → Select product → Confirm → DELETE
+                              │
+                              └── Check: product in transaction_items?
+                                    └── If yes: soft-delete or block (prevent FK violation)
+```
+
+---
+
+## 6. Getting Started
+
+### Prerequisites
+
+| Software | Minimum Version | Download |
+|----------|----------------|----------|
+| Apache NetBeans | 21 (LTS) | https://netbeans.apache.org |
+| Java JDK | 17 (LTS) | https://adoptium.net |
+| MySQL Connector/J | 8.x | https://dev.mysql.com/downloads/connector/j/ |
+| Git | Any recent | https://git-scm.com |
+| GitHub Desktop | Any recent | https://desktop.github.com |
+
+---
+
+### Step 1 — Clone the Repository
+
+```bash
+# Using terminal
+git clone https://github.com/SpIob/pos-system.git
+cd pos-system
+```
+
+Or use **GitHub Desktop → File → Clone Repository** and search for `pos-system`.
+
+---
+
+### Step 2 — Open in NetBeans
+
+1. Open **Apache NetBeans**
+2. **File → Open Project**
+3. Navigate to your cloned folder and open it
+4. If red error marks appear, continue to Step 3
+
+---
+
+### Step 3 — Add the JDBC Driver
+
+1. In the **Projects** panel, right-click **Libraries → Add JAR/Folder**
+2. Navigate to `mysql-connector-j-X.X.X.jar` (from your Downloads)
+3. Click **Open** — red errors should clear
+
+---
+
+### Step 4 — Create config.properties
+
+This file is excluded from Git (it contains database credentials). Create it manually:
+
+```
+src/
+└── config/
+    └── config.properties    ← create this file
+```
+
+Paste the following template and fill in credentials from the team leader:
+
+```properties
+db.host=YOUR_RAILWAY_PUBLIC_HOST
+db.port=YOUR_RAILWAY_PORT
 db.database=railway
 db.username=root
 db.password=YOUR_RAILWAY_PASSWORD
 db.timezone=Asia/Manila
 ```
 
-> **NEVER share this file publicly or commit it to GitHub.**
-> It is already blocked by `.gitignore`, but be careful anyway.
+> **NEVER commit this file.** It is already listed in `.gitignore`.
 
 ---
 
-## Part 4B — About the Railway Database
+### Step 5 — Verify the Connection
 
-Our MySQL database is hosted on Railway. You do **not** need to create a Railway account unless you are the database admin (team leader). Everyone else just uses the credentials shared by the team leader.
-
-This section is here so you understand what Railway is and how to view the database if needed.
-
-### What is Railway?
-Railway is a cloud hosting platform. It runs our MySQL database 24/7 so the whole team connects to the same live database from their own computers. Think of it as the database living on the internet instead of on someone's laptop.
-
-### Viewing the database (optional but useful for debugging)
-
-If you want to browse the tables and data visually, you can use **MySQL Workbench** — a free GUI tool for MySQL.
-
-**Download MySQL Workbench:**
-- https://dev.mysql.com/downloads/workbench/
-- Choose your operating system and install it
-
-**Get the connection details from the team leader.**
-You will need:
-- Host (the Railway public hostname)
-- Port (usually `3306` or a custom Railway port)
-- Username (`root`)
-- Password (same password as in your `config.properties`)
-- Database name (`railway`)
-
-**Connect in MySQL Workbench:**
-1. Open MySQL Workbench
-2. Click the **+** icon next to "MySQL Connections"
-3. Fill in the fields:
-   - Connection Name: `Railway POS`
-   - Hostname: paste the host from the team leader
-   - Port: paste the port number
-   - Username: `root`
-4. Click **Store in Vault** next to Password and enter the password
-5. Click **Test Connection** — you should see "Successfully made the MySQL connection"
-6. Click **OK**, then double-click the connection to open it
-7. In the left panel, expand **railway** to see all 6 tables
-
-> **Note:** Railway's internal host (`mysql.railway.internal`) only works from inside Railway's own network. For MySQL Workbench on your computer, the team leader must enable the **Public Networking** option in Railway and share the **public host and port** with you. These are different from the internal credentials.
-
-### Important rules about the shared database
-- Everyone on the team reads and writes to the **same database** — changes one person makes are immediately visible to everyone else
-- Do not delete or modify existing table data unless your task specifically requires it
-- If you accidentally break something (wrong data, deleted rows), tell the team leader immediately so it can be fixed
-
----
-
-## Part 5 — Verify Your Setup
-
-Once everything above is done, run the connection test:
-
-1. In NetBeans, expand the project → **Source Packages → test package**
+1. In NetBeans, expand **Source Packages → test**
 2. Right-click `TestConnection.java` → **Run File**
-3. Check the **Output** panel at the bottom
+3. Check the Output panel — you should see:
 
-You should see green checkmarks for all 6 tables:
 ```
+[✔] Successfully connected to Railway MySQL!
 [✔] Table found: users
 [✔] Table found: stations
 [✔] Table found: sessions
@@ -191,132 +362,283 @@ You should see green checkmarks for all 6 tables:
 [✔] Table found: transaction_items
 ```
 
-If you see red X marks, double-check your `config.properties` credentials and that the JDBC driver JAR was added in step 3.4.
+If any table shows `[✘]`, run `db-schema.sql` against the Railway database first.
 
 ---
 
-## Part 6 — GitHub Workflow (How We Collaborate)
+## 7. Project Structure
 
-We use **feature branches** so everyone's work stays separate until it is reviewed and merged. Do **not** commit directly to `main`.
-
-### 6.1 Before Starting Any Task
-
-1. Open GitHub Desktop
-2. Make sure you are on the `main` branch
-3. Click **Fetch origin** to pull the latest changes
-4. Click **Branch → New Branch**
-5. Name your branch using this format:
-   ```
-   feature/your-name-feature-name
-   ```
-   Examples:
-   ```
-   feature/maria-login-ui
-   feature/juan-product-dao
-   ```
-6. Click **Create Branch** — you are now working in your own branch
-
-### 6.2 Committing Your Work
-
-1. After making changes in NetBeans, open GitHub Desktop
-2. You will see your changed files listed on the left
-3. Write a short commit message describing what you did
-   - Good: `Add LoginForm UI`
-   - Good: `Add ProductDAO with CRUD methods`
-   - Bad: `changes` or `update`
-4. Click **Commit to feature/your-branch-name**
-5. Click **Push origin** to upload to GitHub
-
-### 6.3 When Your Feature is Done
-
-1. Go to **github.com** and open this repository
-2. You will see a prompt to open a Pull Request for your branch
-3. Click **Compare & pull request**
-4. Write a short description of what your feature does
-5. Click **Create pull request**
-6. The team leader will review and merge it into `main`
-
-### 6.4 Syncing Your Computer After a Merge
-
-Whenever the team leader merges someone's pull request into `main`, everyone else needs to update their local copy. If you skip this step, your code will fall behind and you may run into conflicts later.
-
-Run these two commands in your terminal whenever you want to sync:
 ```
+pos-system/
+│
+├── src/
+│   ├── config/
+│   │   └── config.properties          ← DB credentials (NOT in Git)
+│   │
+│   ├── database/
+│   │   └── DBConnection.java          ← JDBC connection manager
+│   │
+│   ├── model/
+│   │   ├── User.java                  ← POJO for users table
+│   │   ├── Station.java               ← POJO for stations table
+│   │   ├── Session.java               ← POJO for sessions table
+│   │   ├── Product.java               ← POJO for products table
+│   │   ├── Transaction.java           ← POJO for transactions table
+│   │   └── TransactionItem.java       ← POJO for transaction_items table
+│   │
+│   ├── dao/
+│   │   ├── UserDAO.java               ← CRUD + login query for users
+│   │   ├── StationDAO.java            ← Station availability management
+│   │   ├── SessionDAO.java            ← Open/close/calculate sessions
+│   │   ├── ProductDAO.java            ← Product CRUD + stock updates
+│   │   ├── TransactionDAO.java        ← Insert transactions, fetch history
+│   │   └── TransactionItemDAO.java    ← Insert/fetch line items
+│   │
+│   ├── ui/
+│   │   ├── LoginFrame.java            ← Login screen
+│   │   ├── AdminDashboard.java        ← Admin home + analytics
+│   │   ├── CashierDashboard.java      ← Cashier home + station board
+│   │   ├── POSPanel.java              ← Transaction / checkout screen
+│   │   ├── ProductManagementPanel.java← Add/Edit/Delete products (admin)
+│   │   ├── ReportsPanel.java          ← Sales and inventory reports
+│   │   └── ReceiptDialog.java         ← Receipt display + print
+│   │
+│   └── test/
+│       └── TestConnection.java        ← One-time connection verifier
+│
+├── db-schema.sql                      ← Full database setup script
+├── .gitignore                         ← Excludes config.properties, build/
+└── README.md                          ← This file
+```
+
+---
+
+## 8. Coding Standards
+
+All Java code in this project follows these conventions. Consistency makes code review faster and collaboration smoother.
+
+### Naming Conventions
+
+```java
+// Classes: PascalCase
+public class TransactionDAO { }
+public class ProductManagementPanel extends JPanel { }
+
+// Methods: camelCase, verb-noun
+public Product findProductById(int productId) { }
+public boolean updateStockQuantity(int productId, int newQuantity) { }
+public void displayLowStockAlert() { }
+
+// Variables: camelCase, descriptive
+int sessionDurationMinutes;
+double totalAmountDue;
+boolean isStationAvailable;
+
+// Constants: UPPER_SNAKE_CASE
+private static final String CONFIG_PATH = "/config/config.properties";
+private static final int LOW_STOCK_THRESHOLD_DEFAULT = 5;
+private static final double REGULAR_RATE_PER_HOUR = 20.00;
+```
+
+### DAO Pattern
+
+Every DAO class follows the same structure: one method per database operation, PreparedStatements only (no string concatenation), and explicit connection closing in `finally` blocks.
+
+```java
+// GOOD — parameterized query, proper resource closing
+public Product findProductById(int productId) {
+    String sql = "SELECT * FROM products WHERE product_id = ?";
+    try (Connection conn = DBConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, productId);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return mapRowToProduct(rs);
+        }
+    } catch (SQLException e) {
+        System.err.println("[ProductDAO] Error fetching product: " + e.getMessage());
+    }
+    return null;
+}
+
+// BAD — never do this (SQL injection risk)
+String sql = "SELECT * FROM products WHERE product_id = " + productId;
+```
+
+### Model (POJO) Pattern
+
+Model classes are plain data holders with no logic. They match the database table columns one-to-one.
+
+```java
+public class Product {
+    private int productId;
+    private String productName;
+    private String category;
+    private double price;
+    private int stockQuantity;
+    private int lowStockThreshold;
+
+    // Constructor, getters, setters only
+    // No database calls inside a model class
+}
+```
+
+### UI Layer Rules
+
+- UI classes extend `JFrame` (for top-level windows) or `JPanel` (for embedded screens).
+- All database operations are called via DAO methods — **never write SQL inside a UI class**.
+- User input is validated before any DAO call (empty field checks, numeric format checks).
+- Use `SwingUtilities.invokeLater()` for all UI updates that originate from non-EDT threads.
+
+### Error Handling
+
+```java
+// GOOD — catch specific exceptions, print descriptive messages
+try {
+    Connection conn = DBConnection.getConnection();
+    // ...
+} catch (SQLException e) {
+    System.err.println("[SessionDAO] Failed to open session: " + e.getMessage());
+    JOptionPane.showMessageDialog(null, "Database error. Please try again.", 
+        "Error", JOptionPane.ERROR_MESSAGE);
+}
+
+// BAD — silent catch, or catch-all with no context
+} catch (Exception e) {
+    e.printStackTrace();
+}
+```
+
+### No Magic Numbers
+
+```java
+// BAD
+if (stockQuantity <= 5) { showAlert(); }
+
+// GOOD
+private static final int LOW_STOCK_THRESHOLD_DEFAULT = 5;
+if (stockQuantity <= LOW_STOCK_THRESHOLD_DEFAULT) { showAlert(); }
+```
+
+---
+
+## 9. Git Workflow
+
+We use **feature branches** — never commit directly to `main`.
+
+### Branch Naming
+
+```
+feature/your-name-what-you-built
+
+Examples:
+  feature/maria-login-ui
+  feature/juan-product-dao
+  feature/jim-session-billing
+  feature/ana-reports-panel
+```
+
+### Daily Workflow
+
+```bash
+# 1. Get the latest changes before starting
 git checkout main
 git pull origin main
+
+# 2. Create your feature branch
+git checkout -b feature/your-name-feature-name
+
+# 3. Work in NetBeans, then commit often
+git add .
+git commit -m "Add ProductDAO findAll method with category filter"
+
+# 4. Push your branch
+git push origin feature/your-name-feature-name
+
+# 5. When done: open a Pull Request on GitHub
+#    → Go to github.com/SpIob/pos-system
+#    → Click "Compare & pull request"
+#    → Add a short description
+#    → Request review from the team leader
 ```
 
-`git checkout main` switches you back to the main branch. `git pull origin main` downloads all the latest merged changes from GitHub onto your computer.
-
-**When to do this:**
-- At the start of every new work session, before creating a new branch
-- After the team leader announces a pull request has been merged
-- Any time you are unsure if your local copy is up to date
-
-After pulling, create your next feature branch as usual (step 6.1) — it will now be based on the latest code.
-
----
-
-## Project Structure
+### Commit Message Format
 
 ```
-src/
-├── config/
-│   └── config.properties       ← YOUR credentials (gitignored, create manually)
-├── database/
-│   └── DBConnection.java       ← Handles DB connection (reads from config.properties)
-├── model/
-│   ├── User.java
-│   ├── Station.java
-│   ├── Product.java
-│   ├── Session.java
-│   ├── Transaction.java
-│   └── TransactionItem.java
-├── dao/
-│   ├── UserDAO.java
-│   ├── ProductDAO.java
-│   ├── StationDAO.java
-│   ├── SessionDAO.java
-│   └── TransactionDAO.java
-├── ui/
-│   ├── LoginFrame.java
-│   ├── DashboardFrame.java
-│   ├── ProductManagementPanel.java
-│   ├── StationPanel.java
-│   ├── SalesPanel.java
-│   ├── ReceiptDialog.java
-│   └── ReportsPanel.java
-└── test/
-    └── TestConnection.java     ← Run this to verify your DB connection
+<action> <what was changed>
+
+Good examples:
+  Add UserDAO login authentication method
+  Fix station status not updating after session close
+  Refactor DBConnection to use try-with-resources
+  Update product stock after transaction insert
+
+Bad examples:
+  fix stuff
+  changes
+  wip
+```
+
+### What NOT to Commit
+
+The following are already in `.gitignore` — double-check before pushing:
+
+```
+config.properties        ← contains Railway credentials
+build/                   ← NetBeans compiled output
+dist/                    ← packaged JAR
+nbproject/private/       ← local NetBeans settings
+*.class                  ← compiled bytecode
 ```
 
 ---
 
-## Tech Stack
+## 10. Team Roles
 
-| Tool | Purpose |
-|------|---------|
-| Java + Apache NetBeans | Language and IDE |
-| Java Swing | GUI / user interface |
-| MySQL on Railway | Remote database hosting |
-| MySQL Connector/J | JDBC driver for Java to MySQL |
-| GitHub | Version control and collaboration |
-
----
-
-## If Something Goes Wrong
-
-| Problem | Fix |
-|---------|-----|
-| Red error marks in NetBeans | Add the JDBC JAR (step 3.4) |
-| `config.properties not found` | Create `src/config/config.properties` (Part 4) |
-| `Communications link failure` | Check your Railway host and port in config.properties |
-| Can't connect in MySQL Workbench | Ask the team leader for the public host and port — the internal Railway host does not work outside Railway |
-| `fatal: unable to auto-detect email` | Run the `git config` commands in step 1.5 |
-| LF/CRLF warnings on Windows | Safe to ignore — this is normal on Windows |
-| Pull request has merge conflicts | Ask the team leader for help before merging |
-| My code is missing changes my teammate pushed | Run `git checkout main` then `git pull origin main` (step 6.4) |
+| Role | Responsibilities |
+|------|-----------------|
+| **Team Leader / Tech Lead** | Architecture decisions, PR review and merge, Railway and GitHub admin, final integration |
+| **UI Designer** | Java Swing screen layout, Figma/Canva wireframes, component styling |
+| **Database Admin** | Railway MySQL management, schema updates, running `db-schema.sql`, credentials sharing |
+| **Backend Developer(s)** | Model classes, DAO layer, business logic (billing calculations, stock deduction) |
 
 ---
 
-*If your setup is complete and TestConnection passes, ask the team leader for your assigned task and branch name.*
+## 11. Deliverables Checklist
+
+Track your progress against the supervisor's required deliverables:
+
+### System Design Documents
+- [ ] Technical Layout (architecture diagram, component list, tools)
+- [ ] Flowchart (login, sales, inventory, reports flows)
+
+### Implementation
+- [ ] User login with role-based access (Admin / Cashier)
+- [ ] Product management — Add, Edit, Delete (Admin only)
+- [ ] PC station session management — Open, Monitor, Close
+- [ ] Sales transaction processing — products + session billing combined
+- [ ] Receipt generation — itemized, printable
+- [ ] Inventory tracking — stock deduction on sale, low-stock alerts
+- [ ] Admin analytics dashboard (innovative feature)
+- [ ] Live station status board (innovative feature)
+
+### Code Quality
+- [ ] Layered architecture: `database/` → `model/` → `dao/` → `ui/`
+- [ ] No SQL strings inside UI classes
+- [ ] All DB credentials in `config.properties` (not hardcoded)
+- [ ] `config.properties` in `.gitignore`
+- [ ] `TestConnection.java` passes all six table checks
+- [ ] Meaningful commit history (feature branches, descriptive messages)
+
+---
+
+## Notes
+
+- The `config.properties` file is never stored in this repository. Contact the **team leader** or **database admin** to get the Railway credentials.
+- The default seeded credentials are `admin / admin123` and `cashier1 / cashier123`. **Change these in the database after first login.**
+- All monetary values use `DECIMAL(10, 2)` in MySQL and `double` in Java — format display output with `String.format("₱%.2f", amount)`.
+- Railway provides separate **internal** and **public** hostnames. Use the **public proxy host and port** in `config.properties` when developing locally. The internal hostname only works inside Railway's private network.
+
+---
+
+*ByteZone Café POS — Internet Café & Gaming Shop Management System*
