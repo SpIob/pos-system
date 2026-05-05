@@ -195,7 +195,16 @@ public class MainFrame extends JFrame {
             }
         });
 
-        rightPanel.add(loggedUserLabel);
+        rightPanel.add(loggedUserLabel);    
+        // "Users" button — visible only to admin
+        if (currentUser.isAdmin()) {
+            JButton usersBtn = UIHelper.button("Users",
+                    UIHelper.NAVY_MID, UIHelper.NAVY, Color.WHITE);
+            usersBtn.addActionListener(e ->
+                new UserManagementDialog(MainFrame.this, currentUser)
+                        .setVisible(true));
+            rightPanel.add(usersBtn);
+        }
         rightPanel.add(roleBadgeLabel);
         rightPanel.add(logoutButton);
 
