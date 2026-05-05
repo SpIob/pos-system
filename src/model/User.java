@@ -2,81 +2,37 @@ package model;
 
 import java.sql.Timestamp;
 
-/**
- * Represents a staff user account.
- * Maps to the `users` table in the database.
- */
 public class User {
-
-    private int       userId;
-    private String    username;
-    private String    password;   // stored as SHA-256 hash
-    private String    role;       // "admin" or "cashier"
+    private int userId;
+    private String username;
+    private String password;
+    private String role;
     private Timestamp createdAt;
 
-    // Constructors
     public User() {}
 
-    public User(int userId, String username,
-                String password, String role, Timestamp createdAt) {
-        this.userId    = userId;
-        this.username  = username;
-        this.password  = password;
-        this.role      = role;
-        this.createdAt = createdAt;
+    public User(int userId, String username, String password, String role,
+                Timestamp createdAt) {
+        this.userId = userId; this.username = username; this.password = password;
+        this.role = role; this.createdAt = createdAt;
     }
 
-    // Getters
-    public int getUserId() {
-        return userId;
-    }
+    public int getUserId()         { return userId; }
+    public String getUsername()    { return username; }
+    public String getPassword()    { return password; }
+    public String getRole()        { return role; }
+    public Timestamp getCreatedAt(){ return createdAt; }
 
-    public String getUsername() {
-        return username;
-    }
+    public void setUserId(int v)          { this.userId = v; }
+    public void setUsername(String v)     { this.username = v; }
+    public void setPassword(String v)     { this.password = v; }
+    public void setRole(String v)         { this.role = v; }
+    public void setCreatedAt(Timestamp v) { this.createdAt = v; }
 
-    public String getPassword() {
-        return password;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public Timestamp getCreatedAt() {
-        return createdAt;
-    }
-
-    // Setters
-    public void setUserId(int userId) {
-        this.userId = userId;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
-    public void setCreatedAt(Timestamp createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    // Convenience
-    public boolean isAdmin() {
-        return "admin".equalsIgnoreCase(role);
-    }
+    public boolean isAdmin() { return "admin".equalsIgnoreCase(role); }
 
     @Override
     public String toString() {
-        return "User{userId=" + userId
-             + ", username='" + username + "'"
-             + ", role='" + role + "'}";
+        return "User{userId=" + userId + ", username='" + username + "', role='" + role + "'}";
     }
 }

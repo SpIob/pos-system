@@ -18,6 +18,7 @@ import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import java.awt.BorderLayout;
+import java.awt.GridBagConstraints;
 
 /**
  * UIHelper.java
@@ -259,6 +260,25 @@ public class UIHelper {
         if (s == null || s.isEmpty()) return s;
         return s.substring(0, 1).toUpperCase()
              + s.substring(1).toLowerCase();
+    }
+    
+    // ---------------------------------------------------------------
+    // Form row helper — eliminates GridBagConstraints boilerplate
+    // in all dialog buildUI() methods.
+    //
+    // Usage:
+    //   UIHelper.formRow(panel, gbc, 3, new JLabel("Name"), field);
+    // ---------------------------------------------------------------
+    public static void formRow(JPanel panel, GridBagConstraints gbc,
+                                int row, java.awt.Component label,
+                                java.awt.Component field) {
+        gbc.gridy  = row;
+        gbc.insets = new java.awt.Insets(0, 0, 4, 0);
+        panel.add(label, gbc);
+
+        gbc.gridy  = row + 1;
+        gbc.insets = new java.awt.Insets(0, 0, 14, 0);
+        panel.add(field, gbc);
     }
 
     // ---------------------------------------------------------------

@@ -81,20 +81,8 @@ public class LoginFrame extends JFrame {
         backgroundPanel.setLayout(new GridBagLayout());
 
         // --- Card panel (white, rounded corners) ---
-        JPanel cardPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                                    RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Color.WHITE);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
-            }
-        };
-        cardPanel.setOpaque(false);
+        JPanel cardPanel = UIHelper.card(new GridBagLayout(), 0);
         cardPanel.setPreferredSize(new Dimension(360, 460));
-        cardPanel.setLayout(new GridBagLayout());
 
         // Build n add each component to cardPanel
         GridBagConstraints gbc = new GridBagConstraints();
