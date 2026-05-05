@@ -6,7 +6,7 @@ A Point-of-Sale system for an internet café built with **Java (Apache NetBeans)
 
 ## Before You Start
 
-Read this entire file top to bottom before touching anything. Every step depends on the one before it.
+Read this entire file top to bottom before touching anything. Every step depends on the one before it
 
 ---
 
